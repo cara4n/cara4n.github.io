@@ -1,0 +1,2215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERTEX RUN - 3D Parkour</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Встроенные стили для критических элементов */
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; cursor: crosshair; }
+        #game-container { width: 100vw; height: 100vh; position: relative; }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #ui-overlay > * { pointer-events: auto; }
+        
+        /* Главное меню */
+        #main-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            transition: opacity 1s ease;
+        }
+        
+        #main-menu.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .menu-title {
+            font-size: 80px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00f0ff, #ff00e4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(0,240,255,0.3);
+            margin-bottom: 20px;
+            letter-spacing: 8px;
+            animation: titlePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes titlePulse {
+            0%, 100% { transform: scale(1); text-shadow: 0 0 40px rgba(0,240,255,0.3); }
+            50% { transform: scale(1.05); text-shadow: 0 0 80px rgba(0,240,255,0.6); }
+        }
+        
+        .menu-subtitle {
+            color: rgba(255,255,255,0.6);
+            font-size: 20px;
+            letter-spacing: 12px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+        
+        .menu-button {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 16px 48px;
+            font-size: 18px;
+            margin: 8px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            min-width: 240px;
+            letter-spacing: 2px;
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+        }
+        
+        .menu-button:hover {
+            background: rgba(0,240,255,0.15);
+            border-color: #00f0ff;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0,240,255,0.2);
+        }
+        
+        .menu-button.primary {
+            background: linear-gradient(135deg, rgba(0,240,255,0.2), rgba(255,0,228,0.2));
+            border-color: #00f0ff;
+        }
+        
+        .menu-button.primary:hover {
+            background: linear-gradient(135deg, rgba(0,240,255,0.3), rgba(255,0,228,0.3));
+            box-shadow: 0 0 50px rgba(0,240,255,0.3);
+        }
+        
+        /* Выбор уровня */
+        .level-select {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .level-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .level-btn:hover {
+            background: rgba(0,240,255,0.1);
+            border-color: #00f0ff;
+            transform: scale(1.05);
+        }
+        
+        .level-btn.active {
+            background: rgba(0,240,255,0.15);
+            border-color: #00f0ff;
+            box-shadow: 0 0 30px rgba(0,240,255,0.1);
+        }
+        
+        .level-btn .level-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #00f0ff;
+        }
+        
+        .level-btn .level-diff {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+        }
+        
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            padding: 0 30px;
+            display: none;
+            justify-content: space-between;
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+            pointer-events: none;
+            box-sizing: border-box;
+        }
+        
+        #hud.active { display: flex; }
+        
+        .hud-left, .hud-right {
+            display: flex;
+            gap: 30px;
+            background: rgba(0,0,0,0.3);
+            padding: 12px 24px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .hud-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 2px;
+        }
+        
+        .hud-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #00f0ff;
+            text-shadow: 0 0 20px rgba(0,240,255,0.3);
+        }
+        
+        /* Чекпоинты */
+        #checkpoint-notification {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00f0ff;
+            font-size: 40px;
+            font-weight: 700;
+            text-shadow: 0 0 60px rgba(0,240,255,0.8);
+            opacity: 0;
+            transition: all 0.5s ease;
+            z-index: 200;
+            pointer-events: none;
+        }
+        
+        #checkpoint-notification.show {
+            opacity: 1;
+            transform: translate(-50%, -60%) scale(1.1);
+        }
+        
+        /* Уведомление о прохождении уровня */
+        #level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-size: 50px;
+            font-weight: 900;
+            text-shadow: 0 0 80px rgba(255, 215, 0, 0.5);
+            opacity: 0;
+            transition: all 0.8s ease;
+            z-index: 300;
+            pointer-events: none;
+            text-align: center;
+        }
+        
+        #level-complete.show {
+            opacity: 1;
+            transform: translate(-50%, -60%) scale(1.1);
+        }
+        
+        #level-complete .sub {
+            font-size: 20px;
+            color: rgba(255,255,255,0.6);
+            font-weight: 400;
+        }
+        
+        /* Настройки */
+        #settings-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(30px);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 2000;
+            display: none;
+            min-width: 450px;
+            pointer-events: auto;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #settings-menu.active { display: block; }
+        
+        .settings-title {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-align: center;
+            background: linear-gradient(135deg, #00f0ff, #ff00e4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .setting-label {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+        }
+        
+        .setting-control {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .setting-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .setting-btn:hover {
+            background: rgba(0,240,255,0.1);
+            border-color: #00f0ff;
+        }
+        
+        .setting-btn.active {
+            background: rgba(0,240,255,0.2);
+            border-color: #00f0ff;
+            box-shadow: 0 0 20px rgba(0,240,255,0.1);
+        }
+        
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+        }
+        
+        .toggle-switch.active {
+            background: rgba(0,240,255,0.3);
+            border-color: #00f0ff;
+        }
+        
+        .toggle-switch .slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .toggle-switch.active .slider {
+            left: 26px;
+            background: #00f0ff;
+            box-shadow: 0 0 20px rgba(0,240,255,0.3);
+        }
+        
+        /* Кросс-хейр */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 240, 255, 0.8);
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+        
+        #crosshair::before {
+            width: 2px;
+            height: 24px;
+            top: -12px;
+            left: -1px;
+        }
+        
+        #crosshair::after {
+            width: 24px;
+            height: 2px;
+            top: -1px;
+            left: -12px;
+        }
+        
+        #crosshair .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: rgba(0, 240, 255, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+        
+        /* Подсказка управления */
+        #controls-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            pointer-events: none;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            text-align: center;
+            display: none;
+            animation: fadeInUp 0.5s ease;
+        }
+        
+        #controls-hint.active { display: block; }
+        
+        #controls-hint kbd {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-family: inherit;
+            color: #00f0ff;
+            margin: 0 2px;
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        /* Указатель направления */
+        #direction-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 40;
+            pointer-events: none;
+            width: 300px;
+            height: 300px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        #direction-indicator.active {
+            opacity: 0.7;
+        }
+        
+        .direction-arrow {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 35px solid #00f0ff;
+            filter: drop-shadow(0 0 30px rgba(0, 240, 255, 0.5));
+            animation: arrowPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes arrowPulse {
+            0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        .distance-label {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.8);
+            font-size: 16px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            font-weight: 600;
+        }
+        
+        /* Руки */
+        #hands {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 35%;
+            pointer-events: none;
+            z-index: 30;
+            background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 100%);
+            display: none;
+        }
+        
+        #hands.active { display: block; }
+        
+        /* Speed lines */
+        #speed-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 240, 255, 0.05) 100%);
+        }
+        
+        #speed-lines.active {
+            opacity: 1;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .menu-title { font-size: 40px; }
+            .menu-subtitle { font-size: 14px; }
+            .menu-button { padding: 12px 30px; font-size: 14px; min-width: 180px; }
+            #hud { padding: 0 15px; }
+            .hud-left, .hud-right { padding: 8px 16px; gap: 15px; flex-wrap: wrap; }
+            .hud-value { font-size: 16px; }
+            #settings-menu { min-width: 90%; padding: 30px 20px; }
+            #controls-hint { font-size: 11px; padding: 10px 16px; width: 90%; }
+            #checkpoint-notification { font-size: 28px; }
+            .level-select { grid-template-columns: repeat(2, 1fr); }
+            #level-complete { font-size: 32px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Главное меню -->
+        <div id="main-menu">
+            <div class="menu-title">VERTEX RUN</div>
+            <div class="menu-subtitle">Паркур будущего</div>
+            
+            <!-- Выбор уровня -->
+            <div class="level-select">
+                <button class="level-btn active" data-level="sky_ascent" onclick="selectLevel('sky_ascent')">
+                    <div class="level-name">☁️ SKY ASCENT</div>
+                    <div class="level-diff">★☆☆ Лёгкий</div>
+                </button>
+                <button class="level-btn" data-level="neon_core" onclick="selectLevel('neon_core')">
+                    <div class="level-name">💜 NEON CORE</div>
+                    <div class="level-diff">★★☆ Средний</div>
+                </button>
+                <button class="level-btn" data-level="void_park" onclick="selectLevel('void_park')">
+                    <div class="level-name">🌌 VOID PARK</div>
+                    <div class="level-diff">★★☆ Средний</div>
+                </button>
+                <button class="level-btn" data-level="crystal_peak" onclick="selectLevel('crystal_peak')">
+                    <div class="level-name">💎 CRYSTAL PEAK</div>
+                    <div class="level-diff">★★★ Сложный</div>
+                </button>
+                <button class="level-btn" data-level="infinity_grid" onclick="selectLevel('infinity_grid')">
+                    <div class="level-name">🌀 INFINITY GRID</div>
+                    <div class="level-diff">★★★ Сложный</div>
+                </button>
+            </div>
+            
+            <button class="menu-button primary" onclick="startGame()">▶ Начать игру</button>
+            <button class="menu-button" onclick="showSettings()">⚙ Настройки</button>
+            <button class="menu-button" onclick="toggleFullscreen()">⛶ Полный экран</button>
+        </div>
+        
+        <!-- Настройки -->
+        <div id="settings-menu">
+            <div class="settings-title">⚙ Настройки</div>
+            
+            <div class="setting-row">
+                <span class="setting-label">Графика</span>
+                <div class="setting-control">
+                    <button class="setting-btn" onclick="setQuality('low')">LOW</button>
+                    <button class="setting-btn active" onclick="setQuality('medium')">MEDIUM</button>
+                    <button class="setting-btn" onclick="setQuality('ultra')">ULTRA</button>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <span class="setting-label">FOV</span>
+                <div class="setting-control">
+                    <button class="setting-btn" onclick="setFOV(70)">70</button>
+                    <button class="setting-btn active" onclick="setFOV(85)">85</button>
+                    <button class="setting-btn" onclick="setFOV(100)">100</button>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <span class="setting-label">Чувствительность мыши</span>
+                <div class="setting-control">
+                    <button class="setting-btn" onclick="setMouseSensitivity(0.001)">Низкая</button>
+                    <button class="setting-btn active" onclick="setMouseSensitivity(0.002)">Средняя</button>
+                    <button class="setting-btn" onclick="setMouseSensitivity(0.004)">Высокая</button>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <span class="setting-label">Инверсия X (горизонталь)</span>
+                <div class="setting-control">
+                    <div class="toggle-switch" id="invert-x-toggle" onclick="toggleInvertX()">
+                        <div class="slider"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <span class="setting-label">Инверсия Y (вертикаль)</span>
+                <div class="setting-control">
+                    <div class="toggle-switch" id="invert-y-toggle" onclick="toggleInvertY()">
+                        <div class="slider"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="setting-row">
+                <span class="setting-label">Авто-захват мыши</span>
+                <div class="setting-control">
+                    <div class="toggle-switch active" id="autolock-toggle" onclick="toggleAutoLock()">
+                        <div class="slider"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="menu-button" onclick="closeSettings()">Закрыть</button>
+            </div>
+        </div>
+        
+        <!-- HUD -->
+        <div id="hud">
+            <div class="hud-left">
+                <div class="hud-item">
+                    <span class="hud-label">Скорость</span>
+                    <span class="hud-value" id="speed-display">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Время</span>
+                    <span class="hud-value" id="time-display">00:00</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Очки</span>
+                    <span class="hud-value" id="score-display">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Цель</span>
+                    <span class="hud-value" id="target-display">0</span>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-item">
+                    <span class="hud-label">Энергия</span>
+                    <span class="hud-value" id="energy-display">100</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Рывок</span>
+                    <span class="hud-value" id="dash-display">✓</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Уровень</span>
+                    <span class="hud-value" id="level-display">1</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Кросс-хейр -->
+        <div id="crosshair">
+            <div class="dot"></div>
+        </div>
+        
+        <!-- Указатель направления -->
+        <div id="direction-indicator">
+            <div class="direction-arrow"></div>
+            <div class="distance-label" id="distance-label">12м</div>
+        </div>
+        
+        <!-- Эффект скорости -->
+        <div id="speed-lines"></div>
+        
+        <!-- Тени рук -->
+        <div id="hands"></div>
+        
+        <!-- Уведомления -->
+        <div id="checkpoint-notification">✦ ЧЕКПОИНТ</div>
+        <div id="level-complete">
+            🏆 УРОВЕНЬ ПРОЙДЕН!
+            <div class="sub" id="level-complete-sub">Время: 00:00</div>
+        </div>
+        
+        <!-- Подсказка управления -->
+        <div id="controls-hint">
+            <kbd>WASD</kbd> - движение &nbsp;|&nbsp; <kbd>Mouse</kbd> - осмотр &nbsp;|&nbsp; <kbd>SPACE</kbd> - прыжок (x2) &nbsp;|&nbsp; <kbd>Q</kbd> - телепорт &nbsp;|&nbsp; <kbd>SHIFT</kbd> - бег
+        </div>
+        
+        <!-- Контейнер для Three.js -->
+        <div id="three-container" style="width: 100%; height: 100%;"></div>
+    </div>
+    
+    <!-- Three.js и игровой код -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================
+        // VERTEX RUN - Увеличенная карта с джамперами и телепортом
+        // ============================================
+        
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+        let scene, camera, renderer;
+        let player = {
+            position: new THREE.Vector3(0, 5, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            speed: 0,
+            onGround: false,
+            jumpCount: 0,
+            maxJumps: 2,
+            dashCooldown: 0,
+            energy: 100,
+            score: 0,
+            currentCheckpoint: 0,
+            targetCheckpoint: 1,
+            height: 1.7
+        };
+        
+        let keys = {};
+        let gameRunning = false;
+        let gameTime = 0;
+        let clock = new THREE.Clock();
+        let quality = 'medium';
+        let fov = 85;
+        let mouseSensitivity = 0.002;
+        let invertX = false;
+        let invertY = false;
+        let autoLock = true;
+        let cameraShake = 0;
+        let headBob = 0;
+        let isMoving = false;
+        let levelComplete = false;
+        
+        // Управление мышью
+        let isPointerLocked = false;
+        let euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        let mouseMovement = { x: 0, y: 0 };
+        
+        // Уровни
+        const levelList = ['sky_ascent', 'neon_core', 'void_park', 'crystal_peak', 'infinity_grid'];
+        let currentLevelIndex = 0;
+        
+        // Карты с детальными настройками (увеличенные)
+        const maps = {
+            'sky_ascent': {
+                name: 'SKY ASCENT',
+                display: '☁️ SKY ASCENT',
+                difficulty: '★☆☆ Лёгкий',
+                palette: [0x4a9eff, 0x6c5ce7, 0x00d2d3, 0x48dbfb, 0x0abde3],
+                spawn: new THREE.Vector3(0, 10, 0),
+                platformCount: 30,
+                checkpointCount: 8,
+                bgColor: 0x0a0a2a,
+                fogDensity: 0.005,
+                gravity: -25,
+                worldSize: 60,
+                decorationCount: 40
+            },
+            'neon_core': {
+                name: 'NEON CORE',
+                display: '💜 NEON CORE',
+                difficulty: '★★☆ Средний',
+                palette: [0xff006e, 0x00f0ff, 0xffd700, 0x7f00ff, 0xff0080],
+                spawn: new THREE.Vector3(0, 5, 0),
+                platformCount: 35,
+                checkpointCount: 10,
+                bgColor: 0x1a0a1a,
+                fogDensity: 0.004,
+                gravity: -28,
+                worldSize: 70,
+                decorationCount: 50
+            },
+            'void_park': {
+                name: 'VOID PARK',
+                display: '🌌 VOID PARK',
+                difficulty: '★★☆ Средний',
+                palette: [0x7f00ff, 0x00ffaa, 0xff00e4, 0x00f0ff, 0xaa00ff],
+                spawn: new THREE.Vector3(0, 8, 0),
+                platformCount: 32,
+                checkpointCount: 9,
+                bgColor: 0x0a0a1a,
+                fogDensity: 0.003,
+                gravity: -22,
+                worldSize: 65,
+                decorationCount: 45
+            },
+            'crystal_peak': {
+                name: 'CRYSTAL PEAK',
+                display: '💎 CRYSTAL PEAK',
+                difficulty: '★★★ Сложный',
+                palette: [0x00f0ff, 0xff00e4, 0xffffff, 0x00ff88, 0x4488ff],
+                spawn: new THREE.Vector3(0, 15, 0),
+                platformCount: 40,
+                checkpointCount: 12,
+                bgColor: 0x0a0a30,
+                fogDensity: 0.002,
+                gravity: -30,
+                worldSize: 80,
+                decorationCount: 60
+            },
+            'infinity_grid': {
+                name: 'INFINITY GRID',
+                display: '🌀 INFINITY GRID',
+                difficulty: '★★★ Сложный',
+                palette: [0x00ff88, 0x0088ff, 0xff8800, 0x00f0ff, 0xff00e4],
+                spawn: new THREE.Vector3(0, 5, 0),
+                platformCount: 45,
+                checkpointCount: 14,
+                bgColor: 0x0a0a0a,
+                fogDensity: 0.0015,
+                gravity: -30,
+                worldSize: 90,
+                decorationCount: 70
+            }
+        };
+        
+        let currentMap = 'sky_ascent';
+        let platformObjects = [];
+        let checkpointObjects = [];
+        let boostObjects = [];
+        let decorationObjects = [];
+        let particleSystem = null;
+        let nextTargetPosition = null;
+        let checkpointLabels = [];
+        
+        // --- ИНИЦИАЛИЗАЦИЯ THREE.JS ---
+        function initThree() {
+            const container = document.getElementById('three-container');
+            
+            scene = new THREE.Scene();
+            const map = maps[currentMap];
+            scene.fog = new THREE.FogExp2(map.bgColor || 0x000011, map.fogDensity || 0.008);
+            scene.background = new THREE.Color(map.bgColor || 0x000011);
+            
+            camera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, player.height, 0);
+            
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            container.appendChild(renderer.domElement);
+            
+            setupLights();
+            createEnvironment();
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            setupMouseControls();
+        }
+        
+        // --- УПРАВЛЕНИЕ МЫШЬЮ ---
+        function setupMouseControls() {
+            const container = document.getElementById('three-container');
+            
+            container.addEventListener('click', () => {
+                if (gameRunning && !isPointerLocked && autoLock) {
+                    container.requestPointerLock();
+                }
+            });
+            
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === container;
+                document.getElementById('crosshair').style.opacity = isPointerLocked ? '0.8' : '0.3';
+                if (isPointerLocked) {
+                    document.getElementById('controls-hint').classList.remove('active');
+                }
+            });
+            
+            document.addEventListener('mousemove', (event) => {
+                if (!isPointerLocked) return;
+                
+                const invertXFactor = invertX ? -1 : 1;
+                mouseMovement.x += event.movementX * mouseSensitivity * invertXFactor;
+                
+                const invertYFactor = invertY ? -1 : 1;
+                mouseMovement.y += event.movementY * mouseSensitivity * invertYFactor;
+                
+                mouseMovement.y = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, mouseMovement.y));
+            });
+        }
+        
+        // --- СВЕТ ---
+        function setupLights() {
+            const ambient = new THREE.AmbientLight(0x222244, 0.3);
+            scene.add(ambient);
+            
+            const mainLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+            mainLight.position.set(20, 30, 10);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            mainLight.shadow.camera.near = 0.1;
+            mainLight.shadow.camera.far = 150;
+            mainLight.shadow.camera.left = -80;
+            mainLight.shadow.camera.right = 80;
+            mainLight.shadow.camera.top = 80;
+            mainLight.shadow.camera.bottom = -80;
+            scene.add(mainLight);
+            
+            const fillLight = new THREE.DirectionalLight(0x4488ff, 0.5);
+            fillLight.position.set(-10, 20, -10);
+            scene.add(fillLight);
+            
+            const rimLight = new THREE.DirectionalLight(0xff4488, 0.3);
+            rimLight.position.set(0, -10, 20);
+            scene.add(rimLight);
+            
+            const colors = [0x00f0ff, 0xff00e4, 0xffd700];
+            for (let i = 0; i < 10; i++) {
+                const light = new THREE.PointLight(colors[i % 3], 0.3, 40);
+                light.position.set(
+                    (Math.random() - 0.5) * 60,
+                    Math.random() * 25 + 5,
+                    (Math.random() - 0.5) * 60
+                );
+                scene.add(light);
+            }
+        }
+        
+        // --- ОКРУЖЕНИЕ ---
+        function createEnvironment() {
+            const map = maps[currentMap];
+            const worldSize = map.worldSize || 60;
+            
+            // Большой пол
+            const groundGeometry = new THREE.PlaneGeometry(worldSize * 2, worldSize * 2);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: map.bgColor || 0x0a0a1a,
+                roughness: 0.6,
+                metalness: 0.8,
+                transparent: true,
+                opacity: 0.9
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Сетка
+            const gridHelper = new THREE.GridHelper(worldSize * 2, 60, 0x00f0ff, 0x444466);
+            gridHelper.position.y = -0.4;
+            gridHelper.material.transparent = true;
+            gridHelper.material.opacity = 0.1;
+            scene.add(gridHelper);
+            
+            // Декорации
+            createDecorations(map);
+            
+            createAtmosphericParticles();
+            createClouds();
+            createCity();
+        }
+        
+        // --- ДЕКОРАЦИИ ---
+        function createDecorations(map) {
+            decorationObjects.forEach(obj => scene.remove(obj));
+            decorationObjects = [];
+            
+            const palette = map.palette;
+            const count = map.decorationCount || 40;
+            const worldSize = map.worldSize || 60;
+            
+            for (let i = 0; i < count; i++) {
+                // Случайные декорации
+                const type = Math.random();
+                let mesh;
+                
+                if (type < 0.3) {
+                    // Кристаллы
+                    const height = 0.5 + Math.random() * 3;
+                    const geometry = new THREE.ConeGeometry(0.2 + Math.random() * 0.5, height, 4 + Math.floor(Math.random() * 4));
+                    const material = new THREE.MeshStandardMaterial({
+                        color: palette[i % palette.length],
+                        emissive: palette[i % palette.length],
+                        emissiveIntensity: 0.2 + Math.random() * 0.3,
+                        transparent: true,
+                        opacity: 0.5 + Math.random() * 0.3,
+                        roughness: 0.2,
+                        metalness: 0.8
+                    });
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.rotation.y = Math.random() * Math.PI * 2;
+                } else if (type < 0.6) {
+                    // Светящиеся столбы
+                    const geometry = new THREE.CylinderGeometry(0.1, 0.3, 1 + Math.random() * 2, 6);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: palette[i % palette.length],
+                        emissive: palette[i % palette.length],
+                        emissiveIntensity: 0.5,
+                        transparent: true,
+                        opacity: 0.4 + Math.random() * 0.3
+                    });
+                    mesh = new THREE.Mesh(geometry, material);
+                } else {
+                    // Парящие сферы
+                    const geometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.5, 8, 8);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: palette[i % palette.length],
+                        emissive: palette[i % palette.length],
+                        emissiveIntensity: 0.3,
+                        transparent: true,
+                        opacity: 0.3 + Math.random() * 0.3
+                    });
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.userData.floatOffset = Math.random() * Math.PI * 2;
+                }
+                
+                // Размещаем в мире, но не на пути игрока
+                let x, z;
+                let attempts = 0;
+                let validPosition = false;
+                
+                while (!validPosition && attempts < 30) {
+                    x = (Math.random() - 0.5) * worldSize * 1.8;
+                    z = (Math.random() - 0.5) * worldSize * 1.8;
+                    validPosition = true;
+                    
+                    // Проверяем, что не на платформах
+                    for (const platform of platformObjects) {
+                        if (platform.position.distanceTo(new THREE.Vector3(x, 0, z)) < 2) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                
+                if (validPosition) {
+                    const y = 0.5 + Math.random() * (type < 0.3 ? 5 : 3);
+                    mesh.position.set(x, y, z);
+                    mesh.castShadow = true;
+                    scene.add(mesh);
+                    decorationObjects.push(mesh);
+                }
+            }
+        }
+        
+        // --- ЧАСТИЦЫ ---
+        function createAtmosphericParticles() {
+            if (particleSystem) {
+                scene.remove(particleSystem);
+            }
+            
+            const particleCount = 2000;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            
+            const map = maps[currentMap];
+            const worldSize = map.worldSize || 60;
+            
+            for (let i = 0; i < particleCount; i++) {
+                positions[i*3] = (Math.random() - 0.5) * worldSize * 2.5;
+                positions[i*3+1] = Math.random() * 35;
+                positions[i*3+2] = (Math.random() - 0.5) * worldSize * 2.5;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0x4488ff,
+                size: 0.08,
+                transparent: true,
+                opacity: 0.2,
+                blending: THREE.AdditiveBlending,
+                sizeAttenuation: true
+            });
+            
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+        }
+        
+        // --- ОБЛАКА ---
+        function createClouds() {
+            const cloudGroup = new THREE.Group();
+            const map = maps[currentMap];
+            const worldSize = map.worldSize || 60;
+            
+            for (let i = 0; i < 20; i++) {
+                const cloud = new THREE.Group();
+                const cloudColor = new THREE.Color(0x4488ff);
+                cloudColor.multiplyScalar(0.5 + Math.random() * 0.3);
+                
+                const segments = 5 + Math.floor(Math.random() * 8);
+                for (let j = 0; j < segments; j++) {
+                    const size = 1 + Math.random() * 5;
+                    const sphere = new THREE.Mesh(
+                        new THREE.SphereGeometry(size * 0.4, 6, 6),
+                        new THREE.MeshStandardMaterial({
+                            color: cloudColor,
+                            transparent: true,
+                            opacity: 0.08 + Math.random() * 0.12,
+                            roughness: 0.2,
+                            metalness: 0.1
+                        })
+                    );
+                    sphere.position.set(
+                        (Math.random() - 0.5) * size * 2,
+                        (Math.random() - 0.5) * size * 0.5,
+                        (Math.random() - 0.5) * size * 2
+                    );
+                    sphere.scale.y = 0.4 + Math.random() * 0.3;
+                    cloud.add(sphere);
+                }
+                
+                cloud.position.set(
+                    (Math.random() - 0.5) * worldSize * 2,
+                    18 + Math.random() * 20,
+                    (Math.random() - 0.5) * worldSize * 2
+                );
+                cloud.scale.setScalar(1 + Math.random() * 3);
+                cloudGroup.add(cloud);
+            }
+            
+            scene.add(cloudGroup);
+        }
+        
+        // --- ГОРОД ---
+        function createCity() {
+            const cityGroup = new THREE.Group();
+            const map = maps[currentMap];
+            const worldSize = map.worldSize || 60;
+            
+            const buildingCount = Math.floor(300 * (worldSize / 60));
+            
+            for (let i = 0; i < buildingCount; i++) {
+                const height = 2 + Math.random() * 25;
+                const width = 1 + Math.random() * 4;
+                const depth = 1 + Math.random() * 4;
+                
+                const building = new THREE.Mesh(
+                    new THREE.BoxGeometry(width, height, depth),
+                    new THREE.MeshStandardMaterial({
+                        color: new THREE.Color().setHSL(0.6 + Math.random() * 0.1, 0.1, 0.08 + Math.random() * 0.15),
+                        roughness: 0.3,
+                        metalness: 0.7,
+                        emissive: new THREE.Color().setHSL(0.6 + Math.random() * 0.1, 0.5, 0.01)
+                    })
+                );
+                
+                const x = (Math.random() - 0.5) * worldSize * 2;
+                const z = (Math.random() - 0.5) * worldSize * 2;
+                if (Math.abs(x) < 20 && Math.abs(z) < 20) continue;
+                
+                building.position.set(x, height/2, z);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                cityGroup.add(building);
+                
+                // Окна
+                if (Math.random() > 0.5) {
+                    const windowCount = 3 + Math.floor(Math.random() * 8);
+                    for (let w = 0; w < windowCount; w++) {
+                        const windowLight = new THREE.Mesh(
+                            new THREE.PlaneGeometry(0.2, 0.3),
+                            new THREE.MeshBasicMaterial({
+                                color: new THREE.Color().setHSL(0.1 + Math.random() * 0.1, 1, 0.5 + Math.random() * 0.5),
+                                transparent: true,
+                                opacity: 0.3 + Math.random() * 0.3
+                            })
+                        );
+                        windowLight.position.set(
+                            (Math.random() - 0.5) * width * 0.8,
+                            (Math.random() - 0.5) * height * 0.8,
+                            depth/2 + 0.01
+                        );
+                        building.add(windowLight);
+                    }
+                }
+            }
+            
+            scene.add(cityGroup);
+        }
+        
+        // --- СОЗДАНИЕ КАРТЫ ---
+        function createMap(mapName) {
+            levelComplete = false;
+            document.getElementById('level-complete').classList.remove('show');
+            
+            platformObjects.forEach(obj => scene.remove(obj));
+            checkpointObjects.forEach(obj => scene.remove(obj));
+            boostObjects.forEach(obj => scene.remove(obj));
+            checkpointLabels.forEach(label => scene.remove(label));
+            decorationObjects.forEach(obj => scene.remove(obj));
+            platformObjects = [];
+            checkpointObjects = [];
+            boostObjects = [];
+            checkpointLabels = [];
+            decorationObjects = [];
+            
+            const map = maps[mapName];
+            if (!map) return;
+            
+            // Обновляем фон
+            scene.fog = new THREE.FogExp2(map.bgColor || 0x000011, map.fogDensity || 0.008);
+            scene.background = new THREE.Color(map.bgColor || 0x000011);
+            
+            const palette = map.palette;
+            const platformCount = map.platformCount || 30;
+            const checkpointCount = map.checkpointCount || 8;
+            const worldSize = map.worldSize || 60;
+            const positions = [];
+            
+            // Создаем платформы
+            for (let i = 0; i < platformCount; i++) {
+                let x, y, z;
+                let attempts = 0;
+                let validPosition = false;
+                
+                const spread = worldSize * 0.6 + (i / platformCount) * worldSize * 0.3;
+                const minDistance = 2 + (i / platformCount) * 2;
+                
+                while (!validPosition && attempts < 50) {
+                    x = (Math.random() - 0.5) * spread;
+                    y = 1 + Math.random() * 20 + (i / platformCount) * 3;
+                    z = (Math.random() - 0.5) * spread;
+                    validPosition = true;
+                    
+                    for (const pos of positions) {
+                        if (pos.distanceTo(new THREE.Vector3(x, y, z)) < minDistance) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                
+                if (validPosition) {
+                    positions.push(new THREE.Vector3(x, y, z));
+                    
+                    const size = 0.8 + Math.random() * 2.5;
+                    const height = 0.3 + Math.random() * 0.6;
+                    
+                    const isGlass = Math.random() > 0.7;
+                    const isNeon = Math.random() > 0.8;
+                    
+                    const platformMat = new THREE.MeshStandardMaterial({
+                        color: palette[i % palette.length],
+                        roughness: isGlass ? 0.1 : (0.2 + Math.random() * 0.3),
+                        metalness: isGlass ? 0.9 : (0.5 + Math.random() * 0.5),
+                        emissive: isNeon ? new THREE.Color(palette[i % palette.length]).multiplyScalar(0.3) : new THREE.Color(palette[i % palette.length]).multiplyScalar(0.1),
+                        transparent: isGlass ? true : false,
+                        opacity: isGlass ? 0.6 : 0.9
+                    });
+                    
+                    const platform = new THREE.Mesh(
+                        new THREE.BoxGeometry(size, height, size),
+                        platformMat
+                    );
+                    platform.position.set(x, y, z);
+                    platform.castShadow = true;
+                    platform.receiveShadow = true;
+                    scene.add(platform);
+                    platformObjects.push(platform);
+                    
+                    // Свечение
+                    if (Math.random() > 0.6) {
+                        const glow = new THREE.Mesh(
+                            new THREE.RingGeometry(size/2, size/2 + 0.4, 32),
+                            new THREE.MeshBasicMaterial({
+                                color: palette[i % palette.length],
+                                transparent: true,
+                                opacity: 0.2,
+                                side: THREE.DoubleSide
+                            })
+                        );
+                        glow.position.set(x, y - height/2 - 0.1, z);
+                        glow.rotation.x = -Math.PI / 2;
+                        scene.add(glow);
+                        platformObjects.push(glow);
+                    }
+                    
+                    // Джамперы (бусты) - теперь они работают как трамплины!
+                    if (i % 4 === 0 && i > 0) {
+                        createBoost(x, y + 0.5, z, palette[i % palette.length]);
+                    }
+                    
+                    // Чекпоинты с номерами
+                    const checkpointIndex = Math.floor((i / platformCount) * checkpointCount);
+                    if (i > 0 && i % Math.floor(platformCount / checkpointCount) === 0 && checkpointIndex < checkpointCount) {
+                        createCheckpoint(x, y + 2.5, z, palette[i % palette.length], checkpointIndex + 1);
+                    }
+                }
+            }
+            
+            // Стартовая платформа
+            const startPos = map.spawn;
+            const startPlatform = new THREE.Mesh(
+                new THREE.BoxGeometry(5, 0.5, 5),
+                new THREE.MeshStandardMaterial({
+                    color: 0x00f0ff,
+                    roughness: 0.1,
+                    metalness: 0.9,
+                    emissive: 0x00f0ff,
+                    emissiveIntensity: 0.3
+                })
+            );
+            startPlatform.position.set(startPos.x, startPos.y - 0.5, startPos.z);
+            startPlatform.castShadow = true;
+            startPlatform.receiveShadow = true;
+            scene.add(startPlatform);
+            platformObjects.push(startPlatform);
+            
+            // Декорации
+            createDecorations(map);
+            
+            // Кольца
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const radius = 3 + Math.random() * 4;
+                const ringY = 3 + Math.random() * 18;
+                createRing(
+                    Math.cos(angle) * radius,
+                    ringY,
+                    Math.sin(angle) * radius,
+                    palette[i % palette.length]
+                );
+            }
+            
+            // Позиция игрока
+            player.position.copy(startPos);
+            player.position.y += player.height;
+            player.velocity.set(0, 0, 0);
+            player.currentCheckpoint = 0;
+            player.targetCheckpoint = 1;
+            player.score = 0;
+            gameTime = 0;
+            
+            updateTarget();
+            updateHUD();
+            
+            setTimeout(() => {
+                document.getElementById('controls-hint').classList.add('active');
+                setTimeout(() => {
+                    document.getElementById('controls-hint').classList.remove('active');
+                }, 8000);
+            }, 1000);
+        }
+        
+        // --- СОЗДАНИЕ ЧЕКПОИНТА С НОМЕРОМ ---
+        function createCheckpoint(x, y, z, color, number) {
+            const geometry = new THREE.TorusGeometry(0.8, 0.15, 8, 16);
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            const checkpoint = new THREE.Mesh(geometry, material);
+            checkpoint.position.set(x, y, z);
+            checkpoint.userData = { type: 'checkpoint', index: number };
+            
+            // Светящийся столб
+            const pillar = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, 2.5, 4),
+                new THREE.MeshBasicMaterial({
+                    color: 0x00f0ff,
+                    transparent: true,
+                    opacity: 0.3
+                })
+            );
+            pillar.position.y = 1.2;
+            checkpoint.add(pillar);
+            
+            scene.add(checkpoint);
+            checkpointObjects.push(checkpoint);
+            
+            createCheckpointLabel(x, y + 2.2, z, number);
+            
+            const light = new THREE.PointLight(color, 0.5, 5);
+            light.position.set(x, y, z);
+            scene.add(light);
+            checkpointObjects.push(light);
+        }
+        
+        // --- СОЗДАНИЕ 3D ТЕКСТА ---
+        function createCheckpointLabel(x, y, z, number) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fillRect(0, 0, 128, 128);
+            
+            const gradient = ctx.createRadialGradient(64, 64, 10, 64, 64, 50);
+            gradient.addColorStop(0, 'rgba(0, 240, 255, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(0, 240, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(0, 240, 255, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(64, 64, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 60px Arial';
+            ctx.shadowColor = 'rgba(0, 240, 255, 0.8)';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(number.toString(), 64, 68);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillText(number.toString(), 64, 66);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.position.set(x, y, z);
+            sprite.scale.set(1.5, 1.5, 1);
+            sprite.userData = { type: 'label', number: number };
+            scene.add(sprite);
+            checkpointLabels.push(sprite);
+        }
+        
+        // --- СОЗДАНИЕ ДЖАМПЕРА (ТРАМПЛИНА) ---
+        function createBoost(x, y, z, color) {
+            // Создаем видимый трамплин
+            const geometry = new THREE.CylinderGeometry(0.8, 1.0, 0.3, 8);
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.8,
+                transparent: true,
+                opacity: 0.9
+            });
+            const boost = new THREE.Mesh(geometry, material);
+            boost.position.set(x, y, z);
+            boost.userData = { 
+                type: 'boost',
+                jumpPower: 12 + Math.random() * 4 // Сила прыжка
+            };
+            
+            // Свечение вокруг
+            const glowRing = new THREE.Mesh(
+                new THREE.RingGeometry(0.6, 0.9, 16),
+                new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending
+                })
+            );
+            glowRing.position.y = 0.2;
+            glowRing.rotation.x = -Math.PI / 2;
+            boost.add(glowRing);
+            
+            // Верхняя стрелка-указатель
+            const arrow = new THREE.Mesh(
+                new THREE.ConeGeometry(0.2, 0.4, 4),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.5
+                })
+            );
+            arrow.position.y = 0.5;
+            boost.add(arrow);
+            
+            scene.add(boost);
+            boostObjects.push(boost);
+        }
+        
+        // --- СОЗДАНИЕ КОЛЬЦА ---
+        function createRing(x, y, z, color) {
+            const geometry = new THREE.TorusGeometry(1.5, 0.08, 8, 24);
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.3,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.position.set(x, y, z);
+            ring.rotation.x = Math.PI / 2;
+            ring.userData = { type: 'ring', angle: 0 };
+            scene.add(ring);
+            platformObjects.push(ring);
+        }
+        
+        // --- ОБНОВЛЕНИЕ ЦЕЛИ ---
+        function updateTarget() {
+            const nextCheckpoint = checkpointObjects.find(
+                (obj, index) => obj.userData && obj.userData.type === 'checkpoint' && 
+                obj.userData.index === player.targetCheckpoint
+            );
+            
+            if (nextCheckpoint) {
+                nextTargetPosition = nextCheckpoint.position.clone();
+                document.getElementById('target-display').textContent = `${player.targetCheckpoint}/${maps[currentMap].checkpointCount}`;
+                document.getElementById('direction-indicator').classList.add('active');
+                
+                const distance = player.position.distanceTo(nextTargetPosition);
+                document.getElementById('distance-label').textContent = Math.round(distance) + 'м';
+            } else {
+                nextTargetPosition = null;
+                document.getElementById('direction-indicator').classList.remove('active');
+                document.getElementById('target-display').textContent = '★';
+                
+                if (!levelComplete && player.currentCheckpoint === maps[currentMap].checkpointCount) {
+                    levelComplete = true;
+                    showLevelComplete();
+                }
+            }
+        }
+        
+        // --- ПОКАЗАТЬ ПРОХОЖДЕНИЕ ---
+        function showLevelComplete() {
+            const notification = document.getElementById('level-complete');
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = Math.floor(gameTime % 60);
+            document.getElementById('level-complete-sub').textContent = 
+                `Время: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} | Очки: ${player.score}`;
+            notification.classList.add('show');
+            
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const light = new THREE.PointLight(0xffd700, 2, 5);
+                    light.position.set(
+                        player.position.x + (Math.random() - 0.5) * 15,
+                        player.position.y + Math.random() * 8,
+                        player.position.z + (Math.random() - 0.5) * 15
+                    );
+                    scene.add(light);
+                    setTimeout(() => scene.remove(light), 500);
+                }, i * 100);
+            }
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                const nextLevel = (currentLevelIndex + 1) % levelList.length;
+                selectLevel(levelList[nextLevel]);
+                setTimeout(() => startGame(), 500);
+            }, 4000);
+        }
+        
+        // --- ФИЗИКА ---
+        function updatePhysics(delta) {
+            if (!gameRunning || levelComplete) return;
+            
+            const map = maps[currentMap];
+            const gravity = map.gravity || -25;
+            player.velocity.y += gravity * delta;
+            
+            const speed = keys['ShiftLeft'] || keys['ShiftRight'] ? 12 : 8;
+            const acceleration = 20;
+            const friction = 8;
+            const maxSpeed = speed;
+            
+            const forward = new THREE.Vector3(0, 0, -1);
+            const right = new THREE.Vector3(1, 0, 0);
+            forward.applyQuaternion(camera.quaternion);
+            forward.y = 0;
+            forward.normalize();
+            right.applyQuaternion(camera.quaternion);
+            right.y = 0;
+            right.normalize();
+            
+            let moveX = 0, moveZ = 0;
+            if (keys['KeyW']) { moveX += forward.x; moveZ += forward.z; }
+            if (keys['KeyS']) { moveX -= forward.x; moveZ -= forward.z; }
+            if (keys['KeyA']) { moveX -= right.x; moveZ -= right.z; }
+            if (keys['KeyD']) { moveX += right.x; moveZ += right.z; }
+            
+            const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+            if (length > 0) {
+                moveX /= length;
+                moveZ /= length;
+                isMoving = true;
+            } else {
+                isMoving = false;
+            }
+            
+            const targetVelX = moveX * maxSpeed;
+            const targetVelZ = moveZ * maxSpeed;
+            
+            player.velocity.x += (targetVelX - player.velocity.x) * Math.min(acceleration * delta, 1);
+            player.velocity.z += (targetVelZ - player.velocity.z) * Math.min(acceleration * delta, 1);
+            
+            if (player.onGround) {
+                player.velocity.x *= (1 - friction * delta);
+                player.velocity.z *= (1 - friction * delta);
+            }
+            
+            // Прыжок
+            if ((keys['Space'] || keys['KeySpace']) && player.jumpCount < player.maxJumps) {
+                if (player.jumpCount === 0) {
+                    player.velocity.y = 10;
+                } else {
+                    player.velocity.y = 9;
+                }
+                player.jumpCount++;
+                player.onGround = false;
+                cameraShake = 0.3;
+            }
+            
+            // ТЕЛЕПОРТ (Q) - телепортирует в направлении взгляда на 10 метров
+            if ((keys['KeyQ']) && player.dashCooldown <= 0 && player.energy >= 25) {
+                const teleportDir = new THREE.Vector3(0, 0, -1);
+                teleportDir.applyQuaternion(camera.quaternion);
+                teleportDir.y *= 0.3; // Немного вертикали
+                teleportDir.normalize();
+                
+                const teleportDistance = 10;
+                const newPos = player.position.clone().add(teleportDir.multiplyScalar(teleportDistance));
+                
+                // Проверяем, что не влетим в стену
+                let canTeleport = true;
+                for (const platform of platformObjects) {
+                    if (platform.geometry.type === 'BoxGeometry') {
+                        const halfSize = platform.geometry.parameters.width / 2;
+                        const halfHeight = platform.geometry.parameters.height / 2;
+                        const dx = newPos.x - platform.position.x;
+                        const dz = newPos.z - platform.position.z;
+                        const dy = newPos.y - platform.position.y;
+                        
+                        if (Math.abs(dx) < halfSize + 0.5 && Math.abs(dz) < halfSize + 0.5) {
+                            if (Math.abs(dy) < halfHeight + 0.5) {
+                                canTeleport = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (canTeleport) {
+                    // Эффект телепортации
+                    createTeleportEffect(player.position.clone());
+                    
+                    player.position.copy(newPos);
+                    player.position.y += 1; // Немного поднимаем
+                    
+                    // Сбрасываем скорость
+                    player.velocity.set(0, 0, 0);
+                    
+                    player.energy -= 25;
+                    player.dashCooldown = 2;
+                    cameraShake = 0.5;
+                    
+                    // Второй эффект на месте прибытия
+                    setTimeout(() => {
+                        createTeleportEffect(player.position.clone());
+                    }, 100);
+                } else {
+                    // Если телепорт невозможен, просто тратим меньше энергии
+                    player.energy -= 5;
+                }
+            }
+            
+            // Восстановление энергии
+            if (player.energy < 100) {
+                player.energy += delta * 5;
+                if (player.energy > 100) player.energy = 100;
+            }
+            
+            if (player.dashCooldown > 0) {
+                player.dashCooldown -= delta;
+            }
+            
+            player.position.x += player.velocity.x * delta;
+            player.position.y += player.velocity.y * delta;
+            player.position.z += player.velocity.z * delta;
+            
+            player.onGround = false;
+            for (const platform of platformObjects) {
+                if (platform.geometry.type === 'BoxGeometry') {
+                    const halfSize = platform.geometry.parameters.width / 2;
+                    const halfHeight = platform.geometry.parameters.height / 2;
+                    
+                    const dx = player.position.x - platform.position.x;
+                    const dz = player.position.z - platform.position.z;
+                    const dy = player.position.y - platform.position.y - player.height/2;
+                    
+                    if (Math.abs(dx) < halfSize + 0.3 && Math.abs(dz) < halfSize + 0.3) {
+                        if (dy < halfHeight + 0.1 && dy > -halfHeight - 0.1) {
+                            if (player.velocity.y < 0) {
+                                player.position.y = platform.position.y + halfHeight + player.height/2;
+                                player.velocity.y = 0;
+                                player.onGround = true;
+                                player.jumpCount = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ДЖАМПЕРЫ (трамплины)
+            for (const boost of boostObjects) {
+                const dist = player.position.distanceTo(boost.position);
+                if (dist < 1.5) {
+                    // Сильный прыжок вверх
+                    const jumpPower = boost.userData.jumpPower || 14;
+                    player.velocity.y = jumpPower;
+                    
+                    // Немного в сторону от центра
+                    const dir = new THREE.Vector3(
+                        player.position.x - boost.position.x,
+                        0,
+                        player.position.z - boost.position.z
+                    );
+                    if (dir.length() > 0.1) {
+                        dir.normalize();
+                        player.velocity.x += dir.x * 3;
+                        player.velocity.z += dir.z * 3;
+                    }
+                    
+                    player.onGround = false;
+                    player.jumpCount = 0;
+                    player.score += 5;
+                    cameraShake = 0.4;
+                    updateHUD();
+                    
+                    // Эффект трамплина
+                    const glow = new THREE.PointLight(0x00f0ff, 3, 8);
+                    glow.position.copy(boost.position);
+                    scene.add(glow);
+                    
+                    // Взрыв частиц
+                    createBoostEffect(boost.position.clone());
+                    
+                    setTimeout(() => scene.remove(glow), 600);
+                }
+            }
+            
+            // Чекпоинты
+            for (const checkpoint of checkpointObjects) {
+                if (checkpoint.userData && checkpoint.userData.type === 'checkpoint') {
+                    const dist = player.position.distanceTo(checkpoint.position);
+                    if (dist < 2.0) {
+                        const index = checkpoint.userData.index;
+                        if (index > player.currentCheckpoint) {
+                            player.currentCheckpoint = index;
+                            player.targetCheckpoint = index + 1;
+                            player.score += 10;
+                            showCheckpointNotification();
+                            updateTarget();
+                            updateHUD();
+                            
+                            const glow = new THREE.PointLight(0x00f0ff, 3, 10);
+                            glow.position.copy(checkpoint.position);
+                            scene.add(glow);
+                            setTimeout(() => scene.remove(glow), 1000);
+                        }
+                    }
+                }
+            }
+            
+            const worldSize = map.worldSize || 60;
+            if (Math.abs(player.position.x) > worldSize) {
+                player.position.x = Math.sign(player.position.x) * (worldSize - 1);
+                player.velocity.x *= -0.5;
+            }
+            if (Math.abs(player.position.z) > worldSize) {
+                player.position.z = Math.sign(player.position.z) * (worldSize - 1);
+                player.velocity.z *= -0.5;
+            }
+            
+            if (player.position.y < -20) {
+                respawnPlayer();
+            }
+            
+            player.speed = player.velocity.length();
+            
+            updateCamera(delta);
+            updateHUD();
+            updateDirectionIndicator();
+            updateSpeedLines();
+            
+            // Частицы
+            if (particleSystem) {
+                const positions = particleSystem.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length / 3; i++) {
+                    positions[i*3+1] -= delta * 0.5;
+                    if (positions[i*3+1] < -5) {
+                        positions[i*3+1] = 30;
+                        positions[i*3] = (Math.random() - 0.5) * worldSize * 2;
+                        positions[i*3+2] = (Math.random() - 0.5) * worldSize * 2;
+                    }
+                }
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            // Анимации
+            for (const obj of platformObjects) {
+                if (obj.userData && obj.userData.type === 'ring') {
+                    obj.userData.angle += delta * 0.5;
+                    obj.rotation.z = Math.sin(obj.userData.angle) * 0.3;
+                }
+            }
+            
+            for (const obj of checkpointObjects) {
+                if (obj.userData && obj.userData.type === 'checkpoint') {
+                    obj.rotation.y += delta * 2;
+                    obj.position.y += Math.sin(Date.now() / 1000 + obj.userData.index) * delta * 0.5;
+                }
+            }
+            
+            // Анимация декораций
+            for (const obj of decorationObjects) {
+                if (obj.userData && obj.userData.floatOffset !== undefined) {
+                    obj.position.y += Math.sin(Date.now() / 2000 + obj.userData.floatOffset) * delta * 0.3;
+                    obj.rotation.y += delta * 0.2;
+                }
+            }
+        }
+        
+        // --- ЭФФЕКТ ТЕЛЕПОРТА ---
+        function createTeleportEffect(position) {
+            const particleCount = 60;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                const r = 0.5 + Math.random() * 4;
+                
+                positions[i*3] = position.x + Math.sin(theta) * Math.cos(phi) * r;
+                positions[i*3+1] = position.y + Math.sin(phi) * r;
+                positions[i*3+2] = position.z + Math.cos(theta) * Math.cos(phi) * r;
+                
+                colors[i*3] = 0;
+                colors[i*3+1] = 0.8 + Math.random() * 0.2;
+                colors[i*3+2] = 1;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.4,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                vertexColors: true,
+                sizeAttenuation: true
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            
+            const startTime = Date.now();
+            const fadeInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                if (elapsed > 0.8) {
+                    clearInterval(fadeInterval);
+                    scene.remove(particles);
+                } else {
+                    material.opacity = 0.9 * (1 - elapsed / 0.8);
+                    const scale = 1 + elapsed * 2;
+                    particles.scale.set(scale, scale, scale);
+                }
+            }, 16);
+        }
+        
+        // --- ЭФФЕКТ ДЖАМПЕРА ---
+        function createBoostEffect(position) {
+            const particleCount = 40;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = 0.5 + Math.random() * 3;
+                
+                positions[i*3] = position.x + Math.cos(theta) * r;
+                positions[i*3+1] = position.y + Math.random() * 3;
+                positions[i*3+2] = position.z + Math.sin(theta) * r;
+                
+                colors[i*3] = 0;
+                colors[i*3+1] = 0.9 + Math.random() * 0.1;
+                colors[i*3+2] = 1;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.3,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                vertexColors: true
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            
+            setTimeout(() => scene.remove(particles), 500);
+        }
+        
+        // --- ОБНОВЛЕНИЕ УКАЗАТЕЛЯ ---
+        function updateDirectionIndicator() {
+            if (!nextTargetPosition) {
+                document.getElementById('direction-indicator').classList.remove('active');
+                return;
+            }
+            
+            const direction = new THREE.Vector3()
+                .copy(nextTargetPosition)
+                .sub(player.position);
+            
+            const distance = direction.length();
+            document.getElementById('distance-label').textContent = Math.round(distance) + 'м';
+            
+            if (distance < 2) {
+                document.getElementById('direction-indicator').classList.remove('active');
+                return;
+            }
+            
+            const dirLocal = direction.clone();
+            dirLocal.applyQuaternion(camera.quaternion.clone().invert());
+            
+            const angle = Math.atan2(dirLocal.x, -dirLocal.z);
+            const indicator = document.getElementById('direction-indicator');
+            indicator.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+            
+            const isInView = dirLocal.z < 0 || Math.abs(dirLocal.x) < Math.abs(dirLocal.z) * 0.5;
+            indicator.style.opacity = isInView ? '0.7' : '0.3';
+        }
+        
+        // --- КАМЕРА ---
+        function updateCamera(delta) {
+            euler.set(mouseMovement.y, mouseMovement.x, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+            
+            const targetY = player.position.y;
+            
+            if (isMoving && player.onGround) {
+                headBob += delta * player.speed * 0.5;
+                const bobOffset = Math.sin(headBob * 2) * 0.03;
+                camera.position.y = targetY + bobOffset;
+            } else {
+                camera.position.y += (targetY - camera.position.y) * delta * 10;
+            }
+            
+            camera.position.x = player.position.x;
+            camera.position.z = player.position.z;
+            
+            if (cameraShake > 0) {
+                camera.position.x += (Math.random() - 0.5) * cameraShake * 0.15;
+                camera.position.y += (Math.random() - 0.5) * cameraShake * 0.15;
+                cameraShake *= 0.9;
+                if (cameraShake < 0.01) cameraShake = 0;
+            }
+            
+            const targetFOV = fov + Math.min(player.speed * 0.2, 10);
+            camera.fov += (targetFOV - camera.fov) * delta * 2;
+            camera.updateProjectionMatrix();
+        }
+        
+        // --- ЭФФЕКТ СКОРОСТИ ---
+        function updateSpeedLines() {
+            const speedLines = document.getElementById('speed-lines');
+            if (player.speed > 8) {
+                speedLines.classList.add('active');
+                const intensity = Math.min((player.speed - 8) / 5, 1);
+                speedLines.style.opacity = intensity * 0.5;
+            } else {
+                speedLines.classList.remove('active');
+                speedLines.style.opacity = 0;
+            }
+        }
+        
+        // --- УВЕДОМЛЕНИЕ ---
+        function showCheckpointNotification() {
+            const notification = document.getElementById('checkpoint-notification');
+            notification.textContent = `✦ ЧЕКПОИНТ ${player.currentCheckpoint}`;
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 1500);
+        }
+        
+        // --- ВОЗРОЖДЕНИЕ ---
+        function respawnPlayer() {
+            const map = maps[currentMap];
+            if (checkpointObjects.length > 0 && player.currentCheckpoint > 0) {
+                const checkpoint = checkpointObjects.find(
+                    obj => obj.userData && obj.userData.type === 'checkpoint' && 
+                    obj.userData.index === player.currentCheckpoint
+                );
+                if (checkpoint) {
+                    player.position.copy(checkpoint.position);
+                    player.position.y += player.height + 1;
+                }
+            } else {
+                player.position.copy(map.spawn);
+                player.position.y += player.height;
+            }
+            player.velocity.set(0, 0, 0);
+            cameraShake = 0.5;
+            updateTarget();
+        }
+        
+        // --- HUD ---
+        function updateHUD() {
+            document.getElementById('speed-display').textContent = Math.round(player.speed * 10);
+            document.getElementById('score-display').textContent = player.score;
+            document.getElementById('energy-display').textContent = Math.round(player.energy);
+            document.getElementById('dash-display').textContent = player.dashCooldown <= 0 ? '✓' : '⟳';
+            document.getElementById('level-display').textContent = currentLevelIndex + 1;
+            
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = Math.floor(gameTime % 60);
+            document.getElementById('time-display').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // --- ВЫБОР УРОВНЯ ---
+        function selectLevel(levelName) {
+            currentMap = levelName;
+            currentLevelIndex = levelList.indexOf(levelName);
+            
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.level === levelName) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        // --- УПРАВЛЕНИЕ ---
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' || e.code === 'KeyQ') e.preventDefault();
+            if (e.code === 'Escape') {
+                if (isPointerLocked) {
+                    document.exitPointerLock();
+                }
+                togglePause();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        // --- ИГРОВОЙ ЦИКЛ ---
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
+            
+            const delta = Math.min(clock.getDelta(), 0.05);
+            
+            if (gameRunning) {
+                gameTime += delta;
+                updatePhysics(delta);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // --- ЗАПУСК ---
+        function startGame() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('hud').classList.add('active');
+            document.getElementById('crosshair').style.display = 'block';
+            document.getElementById('hands').classList.add('active');
+            
+            if (!scene) {
+                initThree();
+            }
+            
+            gameRunning = true;
+            gameTime = 0;
+            player.score = 0;
+            player.energy = 100;
+            player.dashCooldown = 0;
+            
+            createMap(currentMap);
+            updateHUD();
+            
+            if (autoLock) {
+                setTimeout(() => {
+                    const container = document.getElementById('three-container');
+                    container.requestPointerLock();
+                }, 500);
+            }
+            
+            if (!window._gameLoopStarted) {
+                window._gameLoopStarted = true;
+                gameLoop();
+            }
+        }
+        
+        // --- ПАУЗА ---
+        function togglePause() {
+            if (!gameRunning) return;
+            gameRunning = !gameRunning;
+            document.getElementById('hud').style.opacity = gameRunning ? '1' : '0.3';
+            document.getElementById('crosshair').style.opacity = gameRunning ? '0.8' : '0.3';
+            
+            if (gameRunning && autoLock) {
+                document.getElementById('three-container').requestPointerLock();
+            } else if (!gameRunning) {
+                document.exitPointerLock();
+            }
+        }
+        
+        // --- НАСТРОЙКИ ---
+        function showSettings() {
+            document.getElementById('settings-menu').classList.add('active');
+            if (isPointerLocked) {
+                document.exitPointerLock();
+            }
+        }
+        
+        function closeSettings() {
+            document.getElementById('settings-menu').classList.remove('active');
+            if (gameRunning && autoLock) {
+                document.getElementById('three-container').requestPointerLock();
+            }
+        }
+        
+        function setQuality(q) {
+            quality = q;
+            document.querySelectorAll('.setting-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const pixelRatio = q === 'ultra' ? 2 : q === 'medium' ? 1.5 : 1;
+            if (renderer) {
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatio));
+                renderer.shadowMap.enabled = q !== 'low';
+            }
+        }
+        
+        function setFOV(value) {
+            fov = value;
+            document.querySelectorAll('.setting-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            if (camera) {
+                camera.fov = value;
+                camera.updateProjectionMatrix();
+            }
+        }
+        
+        function setMouseSensitivity(value) {
+            mouseSensitivity = value;
+            document.querySelectorAll('.setting-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+        
+        function toggleInvertX() {
+            invertX = !invertX;
+            document.getElementById('invert-x-toggle').classList.toggle('active');
+        }
+        
+        function toggleInvertY() {
+            invertY = !invertY;
+            document.getElementById('invert-y-toggle').classList.toggle('active');
+        }
+        
+        function toggleAutoLock() {
+            autoLock = !autoLock;
+            document.getElementById('autolock-toggle').classList.toggle('active');
+            
+            if (autoLock && gameRunning && !isPointerLocked) {
+                document.getElementById('three-container').requestPointerLock();
+            } else if (!autoLock && isPointerLocked) {
+                document.exitPointerLock();
+            }
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // --- ЗАГРУЗКА ---
+        window.onload = function() {
+            setTimeout(() => {
+                if (!scene) initThree();
+            }, 100);
+            
+            document.getElementById('invert-x-toggle').classList.remove('active');
+            document.getElementById('invert-y-toggle').classList.remove('active');
+            document.getElementById('autolock-toggle').classList.add('active');
+        };
+        
+        console.log('VERTEX RUN - Увеличенные карты с джамперами и телепортом');
+        console.log('Q - телепорт в направлении взгляда (тратит 25 энергии)');
+        console.log('Джамперы (светящиеся платформы) - мощный прыжок вверх!');
+    </script>
+</body>
+</html>

@@ -234,7 +234,7 @@
         }
         
         /* Настройки */
-        #settings-menu {
+        #settings-menu, #pause-menu {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -252,7 +252,7 @@
             overflow-y: auto;
         }
         
-        #settings-menu.active { display: block; }
+        #settings-menu.active, #pause-menu.active { display: block; }
         
         .settings-title {
             color: white;
@@ -526,6 +526,25 @@
             display: none;
         }
         #best-time-badge.active { display: block; }
+        #volleyball-score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            pointer-events: none;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(10px);
+            padding: 8px 22px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,215,0,0.25);
+            color: #ffd700;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            display: none;
+        }
+        #volleyball-score.active { display: block; }
         #new-record-flash {
             position: absolute;
             top: 45%;
@@ -689,6 +708,49 @@
         }
         #mp-players-tag.active { display: block; }
 
+        #mp-chat-log, #lobby-chat-log {
+            height: 160px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 12px;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .chat-line { line-height: 1.4; word-break: break-word; }
+        .chat-line .chat-name { color: #00f0ff; font-weight: 700; margin-right: 6px; }
+        .chat-line.chat-self .chat-name { color: #ff00e4; }
+        .chat-line.chat-system { color: rgba(255,255,255,0.4); font-style: italic; }
+
+        #global-chat-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(30px);
+            padding: 32px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 2000;
+            display: none;
+            min-width: 420px;
+            max-width: 90%;
+            pointer-events: auto;
+        }
+        #global-chat-menu.active { display: block; }
+        #lobby-status {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            margin: 6px 0 10px;
+        }
+        #lobby-status.ok { color: #00ff88; }
+        #lobby-status.err { color: #ff5577; }
+
         /* Адаптивность */
         @media (max-width: 768px) {
             .menu-title { font-size: 40px; }
@@ -697,12 +759,13 @@
             #hud { padding: 0 15px; }
             .hud-left, .hud-right { padding: 8px 16px; gap: 15px; flex-wrap: wrap; }
             .hud-value { font-size: 16px; }
-            #settings-menu { min-width: 90%; padding: 30px 20px; }
+            #settings-menu, #pause-menu { min-width: 90%; padding: 30px 20px; }
             #controls-hint { font-size: 11px; padding: 10px 16px; width: 90%; }
             #checkpoint-notification { font-size: 28px; }
             .level-select { grid-template-columns: repeat(2, 1fr); }
             #level-complete { font-size: 32px; }
             #multiplayer-menu { padding: 24px 18px; min-width: 92%; }
+            #global-chat-menu { padding: 24px 18px; min-width: 92%; }
         }
 
         @media (max-width: 768px), (pointer: coarse) {
@@ -739,11 +802,16 @@
                     <div class="level-name">🌀 INFINITY GRID</div>
                     <div class="level-diff">★★★ Сложный</div>
                 </button>
+                <button class="level-btn" data-level="volley_court" onclick="selectLevel('volley_court')">
+                    <div class="level-name">🏐 ВОЛЕЙБОЛ (тест)</div>
+                    <div class="level-diff">Мини-игра 2-4 игрока</div>
+                </button>
             </div>
             
             <button class="menu-button primary" onclick="startGame()">▶ Начать игру</button>
             <button class="menu-button" onclick="showSettings()">⚙ Настройки</button>
             <button class="menu-button" onclick="showMultiplayer()">👥 Мультиплеер (тест)</button>
+            <button class="menu-button" onclick="showGlobalChat()">💬 Общий чат</button>
             <button class="menu-button" onclick="toggleFullscreen()">⛶ Полный экран</button>
         </div>
         
@@ -822,9 +890,47 @@
                         onchange="setPlayerName(this.value)">
                 </div>
             </div>
+
+            <div class="setting-row">
+                <span class="setting-label">Громкость звука</span>
+                <div class="setting-control">
+                    <input type="range" id="volume-slider" min="0" max="100" value="60" style="width:120px;"
+                        oninput="setSoundVolume(this.value)">
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <span class="setting-label">Призрак лучшего забега</span>
+                <div class="setting-control">
+                    <div class="toggle-switch" id="ghost-toggle" onclick="toggleGhostMode()">
+                        <div class="slider"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <span class="setting-label">Режим «Бездна» (падать вместо возрождения)</span>
+                <div class="setting-control">
+                    <div class="toggle-switch" id="abyss-toggle" onclick="toggleAbyssMode()">
+                        <div class="slider"></div>
+                    </div>
+                </div>
+            </div>
             
             <div style="text-align: center; margin-top: 30px;">
                 <button class="menu-button" onclick="closeSettings()">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Меню паузы -->
+        <div id="pause-menu">
+            <div class="settings-title">⏸ ПАУЗА</div>
+            <div style="display:flex; flex-direction:column; gap:12px; min-width:260px;">
+                <button class="menu-button primary" onclick="resumeGame()">▶ Продолжить</button>
+                <button class="menu-button" onclick="showSettings()">⚙ Настройки</button>
+                <button class="menu-button" onclick="showMultiplayer()">👥 Мультиплеер</button>
+                <button class="menu-button" onclick="showGlobalChat()">💬 Общий чат</button>
+                <button class="menu-button" onclick="quitToMainMenu()">🚪 В главное меню</button>
             </div>
         </div>
 
@@ -833,25 +939,61 @@
             <div class="settings-title">👥 Мультиплеер (тест)</div>
             <div id="mp-status">Не подключено</div>
 
-            <div class="setting-label" style="display:block;margin-bottom:6px;">Ваш ID (дайте другу):</div>
-            <div class="mp-id-box">
-                <span id="mp-my-id" style="flex:1;">—</span>
-                <button class="setting-btn" onclick="copyMyPeerId()">Копировать</button>
+            <div id="mp-room-form">
+                <div class="setting-label" style="display:block;margin-bottom:6px;">Название комнаты (придумайте и скажите другу):</div>
+                <input type="text" id="mp-room-input" class="mp-input" placeholder="например: друзья123" maxlength="24">
+                <button class="menu-button primary" style="width:100%;padding:12px;" onclick="mpJoinRoom()">Войти / Создать комнату</button>
             </div>
 
-            <div class="setting-label" style="display:block;margin-bottom:6px;">ID друга:</div>
-            <input type="text" id="mp-peer-input" class="mp-input" placeholder="Вставьте ID друга сюда">
-            <div style="display:flex; gap:10px;">
-                <button class="menu-button" style="flex:1;min-width:0;padding:12px;" onclick="mpStart()">Создать / Активировать</button>
-                <button class="menu-button primary" style="flex:1;min-width:0;padding:12px;" onclick="mpConnectToPeer()">Подключиться</button>
+            <div id="mp-room-active" style="display:none;">
+                <div class="mp-id-box">
+                    <span>Комната: <b id="mp-room-name-display">—</b></span>
+                    <span id="mp-room-role-badge" style="color:#00f0ff;">хост</span>
+                </div>
+
+                <div class="setting-row" style="margin:12px 0;">
+                    <span class="setting-label">Игроки сталкиваются физически</span>
+                    <div class="setting-control">
+                        <div class="toggle-switch" id="mp-collisions-toggle" onclick="mpToggleCollisions()">
+                            <div class="slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="menu-button primary" id="mp-start-together-btn" style="width:100%;padding:12px;display:none;" onclick="mpStartTogether()">▶ Начать игру вместе (для всех)</button>
+
+                <div id="mp-chat-log"></div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <input type="text" id="mp-chat-input" class="mp-input" style="margin-bottom:0;" placeholder="Сообщение..." maxlength="200" onkeydown="if(event.key==='Enter') mpSendRoomChat()">
+                    <button class="setting-btn" onclick="mpSendRoomChat()">➤</button>
+                </div>
+
+                <button class="menu-button" style="width:100%;padding:10px;margin-top:12px;" onclick="mpLeaveRoom()">Покинуть комнату</button>
             </div>
 
             <div class="mp-note">
-                Экспериментальный P2P-мультиплеер (через сеть PeerJS, без своего сервера — подходит для запуска на GitHub Pages). Один игрок нажимает «Создать», делится своим ID со вторым игроком, который вводит этот ID и жмёт «Подключиться». Начните игру на одной и той же карте, чтобы увидеть друг друга.
+                Экспериментальный P2P-мультиплеер (через сеть PeerJS, без своего сервера — подходит для запуска на GitHub Pages). Первый, кто вводит название комнаты, становится хостом; все остальные с тем же названием подключаются к нему. Все карты в комнате генерируются из одного набора — это гарантирует, что платформы и препятствия у всех игроков совпадают. Не более нескольких игроков в одной комнате — стабильность P2P-соединений ограничена.
             </div>
 
-            <div style="text-align: center; margin-top: 20px;">
+            <div style="text-align: center; margin-top: 16px;">
                 <button class="menu-button" onclick="closeMultiplayer()">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Общий чат (тест) -->
+        <div id="global-chat-menu">
+            <div class="settings-title">💬 Общий чат</div>
+            <div id="lobby-status">Подключение...</div>
+            <div id="lobby-chat-log"></div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <input type="text" id="lobby-chat-input" class="mp-input" style="margin-bottom:0;" placeholder="Сообщение всем..." maxlength="200" onkeydown="if(event.key==='Enter') lobbySendChatFromInput()">
+                <button class="setting-btn" onclick="lobbySendChatFromInput()">➤</button>
+            </div>
+            <div class="mp-note">
+                Тестовый общий чат без выделенного сервера: первый посетитель становится временным "хостом"-ретранслятором для остальных (снова через PeerJS). Если он закроет вкладку, чат на минуту прервётся, пока кто-то другой не станет новым хостом — это нормально для такого формата.
+            </div>
+            <div style="text-align: center; margin-top: 16px;">
+                <button class="menu-button" onclick="closeGlobalChat()">Закрыть</button>
             </div>
         </div>
         
@@ -917,6 +1059,7 @@
 
         <!-- Рекорд -->
         <div id="best-time-badge">🏅 РЕКОРД: <span id="best-time-value">--:--</span></div>
+        <div id="volleyball-score">🏐 <span id="vb-score-left">0</span> : <span id="vb-score-right">0</span></div>
         <div id="new-record-flash">🏅 НОВЫЙ РЕКОРД!</div>
 
         <!-- Тег игроков мультиплеера -->
@@ -1023,12 +1166,415 @@
         let speedTrailTimer = 0;
         let speedTrailPositions = [];
 
-        // Мультиплеер (тест, P2P через PeerJS)
+        // Мультиплеер (тест, P2P через PeerJS) - комната на несколько человек с ретрансляцией через хоста
         let mpPeer = null;
-        let mpConnections = {}; // id -> { conn, mesh, label, targetPos: THREE.Vector3, lastUpdate }
+        let mpMode = null;             // null | 'host' | 'client'
+        let mpRoomId = null;
+        let mpHostConn = null;         // используется в роли клиента - соединение с хостом
+        let mpHostConnections = {};    // используется в роли хоста - peerId -> conn (для рассылки)
+        let mpPlayers = {};            // peerId -> { mesh, label, targetPos, rotY, name, color } - все удалённые игроки, известные нам
         let mpPlayerName = 'Игрок' + Math.floor(Math.random() * 1000);
         let mpBroadcastTimer = 0;
+        let mpCollisionsEnabled = false;  // «плотность игроков» - можно ли физически толкать друг друга
+        let mpGameActive = false;         // хост: идёт ли сейчас игра в комнате (для подключающихся позже)
+        let mpCurrentSeed = null;         // хост: seed текущей игры, чтобы передать новым игрокам
+        const MP_PLAYER_COLORS = [0x00f0ff, 0xff00e4, 0xffd700, 0x00ff88, 0xff8800, 0x7f00ff, 0x00ffaa, 0xff4466];
+
+        // Общий чат в главном меню (тоже P2P, отдельная "комната" с фиксированным именем)
+        const LOBBY_ROOM_ID = 'vertexrun-global-lobby-v2';
+        let lobbyPeer = null;
+        let lobbyMode = null;          // null | 'host' | 'client'
+        let lobbyHostConn = null;
+        let lobbyHostConnections = {};
+        let lobbyReconnectTimer = null;
+
+        // --- ГЕНЕРАТОР ПСЕВДОСЛУЧАЙНЫХ ЧИСЕЛ С СЕМЕНЕМ ---
+        // Нужен для мультиплеера: все игроки в комнате должны сгенерировать ОДИНАКОВУЮ карту
+        // (иначе платформы у всех оказываются в разных местах - именно это раньше и вызывало
+        // ситуацию "один стоит, другой падает сквозь пол"). Хост придумывает число (seed) и
+        // рассылает его всем перед стартом; каждый клиент временно подменяет Math.random на
+        // детерминированную функцию от этого числа только на время генерации карты.
+        const nativeMathRandom = Math.random.bind(Math);
+        function mulberry32(seed) {
+            let a = seed >>> 0;
+            return function () {
+                a |= 0; a = (a + 0x6D2B79F5) | 0;
+                let t = Math.imul(a ^ (a >>> 15), 1 | a);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
         
+        // ============================================
+        // ЗВУК - процедурные эффекты через Web Audio API (без внешних аудиофайлов,
+        // поэтому не может быть проблем с авторскими правами). Громкость регулируется
+        // в настройках; звук не запустится, пока пользователь не взаимодействует со
+        // страницей - так требуют браузеры, поэтому AudioContext создаётся лениво.
+        // ============================================
+        let audioCtx = null;
+        let masterGain = null;
+        let soundVolume = 0.6;
+
+        function ensureAudioContext() {
+            if (!audioCtx) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    masterGain = audioCtx.createGain();
+                    masterGain.gain.value = soundVolume;
+                    masterGain.connect(audioCtx.destination);
+                } catch (e) { audioCtx = null; }
+            } else if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+        }
+        document.addEventListener('click', ensureAudioContext);
+        document.addEventListener('touchstart', ensureAudioContext, { once: true });
+
+        function setSoundVolume(value) {
+            soundVolume = Math.max(0, Math.min(100, Number(value))) / 100;
+            if (masterGain) masterGain.gain.value = soundVolume;
+        }
+
+        function playTone(freq, duration, type, peakGain, endFreq) {
+            if (!audioCtx || soundVolume <= 0) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type || 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            if (endFreq) osc.frequency.exponentialRampToValueAtTime(Math.max(endFreq, 1), now + duration);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(Math.max(peakGain || 0.25, 0.001), now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + duration + 0.05);
+        }
+
+        function playJumpSound() { playTone(440, 0.15, 'triangle', 0.22, 700); }
+        function playLandSound() { playTone(130, 0.1, 'sine', 0.18, 55); }
+        function playTeleportSound() { playTone(1200, 0.22, 'sine', 0.2, 280); }
+        function playBoostSound() { playTone(200, 0.3, 'sawtooth', 0.14, 900); }
+        function playCheckpointSound() {
+            if (!audioCtx) return;
+            playTone(660, 0.12, 'sine', 0.22, 880);
+            setTimeout(() => playTone(880, 0.16, 'sine', 0.18, 1100), 90);
+        }
+        function playLevelCompleteSound() {
+            if (!audioCtx) return;
+            [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'triangle', 0.2), i * 120));
+        }
+        function playUiClickSound() { playTone(700, 0.05, 'square', 0.08, 700); }
+
+        // ============================================
+        // ПРИЗРАК ЛУЧШЕГО ЗАБЕГА - записывает позицию игрока во время рекордного
+        // прохождения и воспроизводит её полупрозрачной моделью в следующих попытках.
+        // ============================================
+        let ghostModeEnabled = false;
+        let ghostRecording = [];       // текущая запись {t, x, y, z, rotY}
+        let ghostRecordTimer = 0;
+        let ghostPlaybackData = null;  // загруженная лучшая запись для текущего уровня
+        let ghostMesh = null;
+
+        // ============================================
+        // РЕЖИМ «БЕЗДНА» - вместо мгновенного возрождения на чекпоинте при падении,
+        // игрок долетает до пола далеко внизу и должен сам забраться обратно вверх по
+        // цепочке платформ, которую генерация карты специально для этого добавляет.
+        // ============================================
+        let abyssModeEnabled = false;
+        function toggleAbyssMode() {
+            abyssModeEnabled = !abyssModeEnabled;
+            document.getElementById('abyss-toggle').classList.toggle('active', abyssModeEnabled);
+        }
+
+        // ============================================
+        // РЕЖИМ «ВОЛЕЙБОЛ» (тест) - мини-игра для 2-4 игроков. Физику мяча считает
+        // только один участник (хост комнаты, либо локально в одиночной игре) и
+        // рассылает его положение остальным - иначе у каждого была бы своя, слегка
+        // разная симуляция и мяч бы "расходился" на экранах разных игроков.
+        // ============================================
+        let volleyball = null;
+        let volleyballVel = new THREE.Vector3();
+        let volleyballScoreLeft = 0;
+        let volleyballScoreRight = 0;
+        let volleyballBroadcastTimer = 0;
+        let volleyballHitQueued = false;
+        let volleyballResetTimer = 0;
+        const VOLLEYBALL_GROUND_Y = 0.45;
+        const VOLLEYBALL_NET_TOP_Y = 2.1;
+        const VOLLEYBALL_NET_HALF_HEIGHT = 1.0;
+
+        function createAbyssFloorAndClimb(map) {
+            const worldSize = map.worldSize || 60;
+            const floorY = -25;
+            const palette = map.palette;
+
+            // Пол, который ловит упавшего игрока
+            const floor = new THREE.Mesh(
+                new THREE.BoxGeometry(worldSize * 2.4, 1, worldSize * 2.4),
+                new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.6, metalness: 0.3, emissive: 0x0a0a1a, emissiveIntensity: 0.3 })
+            );
+            floor.position.set(0, floorY, 0);
+            floor.receiveShadow = true;
+            scene.add(floor);
+            platformObjects.push(floor);
+
+            // Спиральная "лестница" из платформ от пола обратно к обычным платформам карты
+            let angle = 0;
+            let radius = 4;
+            let y = floorY + 3;
+            const topY = 2; // примерно там, где начинаются обычные платформы карты
+            const steps = 22;
+            const stepY = (topY - y) / steps;
+            for (let i = 0; i < steps; i++) {
+                angle += 0.75 + Math.random() * 0.3;
+                radius = 4 + (i % 5) * 1.5;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const size = 1.6 + Math.random() * 0.8;
+
+                const platform = new THREE.Mesh(
+                    new THREE.BoxGeometry(size, 0.4, size),
+                    new THREE.MeshStandardMaterial({
+                        color: palette[i % palette.length],
+                        roughness: 0.25,
+                        metalness: 0.6,
+                        emissive: new THREE.Color(palette[i % palette.length]).multiplyScalar(0.25)
+                    })
+                );
+                platform.position.set(x, y, z);
+                platform.castShadow = true;
+                platform.receiveShadow = true;
+                scene.add(platform);
+                platformObjects.push(platform);
+
+                y += stepY;
+            }
+        }
+
+        // --- ВОЛЕЙБОЛЬНАЯ ПЛОЩАДКА ---
+        function createVolleyballCourt(map) {
+            const worldSize = map.worldSize || 18;
+            const courtDepth = worldSize * 0.55;
+
+            // Площадка - один плоский платформенный меш (переиспользует обычную коллизию платформ)
+            const floor = new THREE.Mesh(
+                new THREE.BoxGeometry(worldSize * 2, 0.5, courtDepth * 2),
+                new THREE.MeshStandardMaterial({ color: 0x1a3a4a, roughness: 0.5, metalness: 0.3, emissive: 0x0a2a3a, emissiveIntensity: 0.3 })
+            );
+            floor.position.set(0, -0.25, 0);
+            floor.receiveShadow = true;
+            scene.add(floor);
+            platformObjects.push(floor);
+
+            // Линия середины площадки (просто визуально)
+            const centerLine = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 0.51, courtDepth * 2),
+                new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.5 })
+            );
+            centerLine.position.set(0, -0.24, 0);
+            scene.add(centerLine);
+            decorationObjects.push(centerLine);
+
+            // Сетка (визуально + своя логика отскока мяча, игрок сквозь неё проходит свободно)
+            const netGroup = new THREE.Group();
+            const netMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, VOLLEYBALL_NET_HALF_HEIGHT * 2, courtDepth * 1.7),
+                new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, emissive: 0xffffff, emissiveIntensity: 0.2 })
+            );
+            netMesh.position.set(0, VOLLEYBALL_NET_TOP_Y - VOLLEYBALL_NET_HALF_HEIGHT, 0);
+            netGroup.add(netMesh);
+            const netPostGeo = new THREE.CylinderGeometry(0.08, 0.08, VOLLEYBALL_NET_TOP_Y + 0.3, 8);
+            const netPostMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.4 });
+            const postL = new THREE.Mesh(netPostGeo, netPostMat);
+            postL.position.set(0, (VOLLEYBALL_NET_TOP_Y + 0.3) / 2, -courtDepth * 0.85);
+            netGroup.add(postL);
+            const postR = postL.clone();
+            postR.position.z = courtDepth * 0.85;
+            netGroup.add(postR);
+            scene.add(netGroup);
+            decorationObjects.push(netGroup);
+
+            // Мяч
+            if (volleyball) { scene.remove(volleyball); volleyball = null; }
+            const ballGeo = new THREE.SphereGeometry(0.35, 14, 14);
+            const ballMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1, emissive: 0xffaa00, emissiveIntensity: 0.15 });
+            volleyball = new THREE.Mesh(ballGeo, ballMat);
+            volleyball.castShadow = true;
+            volleyball.position.set(0, 4, 0);
+            scene.add(volleyball);
+            volleyballVel.set(0, 0, 0);
+
+            volleyballScoreLeft = 0;
+            volleyballScoreRight = 0;
+            updateVolleyballScoreDisplay();
+            document.getElementById('volleyball-score').classList.add('active');
+            document.getElementById('best-time-badge').classList.remove('active');
+        }
+
+        function updateVolleyballScoreDisplay() {
+            document.getElementById('vb-score-left').textContent = volleyballScoreLeft;
+            document.getElementById('vb-score-right').textContent = volleyballScoreRight;
+        }
+
+        function volleyballResetBall() {
+            volleyball.position.set(0, 4, 0);
+            volleyballVel.set(0, 0, 0);
+        }
+
+        // Физику мяча считает только "авторитетная" сторона - хост комнаты (или локальный
+        // игрок вне мультиплеера); остальные получают готовое положение мяча по сети
+        function updateVolleyballPhysics(delta) {
+            if (!volleyball || !maps[currentMap] || maps[currentMap].mode !== 'volleyball') return;
+            const isAuthoritative = !mpMode || mpMode === 'host';
+
+            if (!isAuthoritative) {
+                if (mpMode) { /* положение приходит из mpOnData('ball') и лерпится там же */ }
+                return;
+            }
+
+            if (volleyballResetTimer > 0) {
+                volleyballResetTimer -= delta;
+                if (volleyballResetTimer <= 0) volleyballResetBall();
+            } else {
+                volleyballVel.y += -14 * delta;
+                volleyball.position.addScaledVector(volleyballVel, delta);
+
+                // Отскок от боковых границ площадки (глубина корта)
+                const courtDepth = (maps[currentMap].worldSize || 18) * 0.55;
+                if (Math.abs(volleyball.position.z) > courtDepth) {
+                    volleyball.position.z = Math.sign(volleyball.position.z) * courtDepth;
+                    volleyballVel.z *= -0.7;
+                }
+
+                // Отскок от сетки (простая проверка пересечения плоскости x=0)
+                if (Math.abs(volleyball.position.x) < 0.3 && volleyball.position.y < VOLLEYBALL_NET_TOP_Y) {
+                    volleyball.position.x = Math.sign(volleyball.position.x || 1) * 0.3;
+                    volleyballVel.x *= -0.6;
+                }
+
+                // Касание пола - очко другой стороне
+                if (volleyball.position.y <= VOLLEYBALL_GROUND_Y && volleyballVel.y < 0) {
+                    volleyball.position.y = VOLLEYBALL_GROUND_Y;
+                    if (volleyball.position.x < 0) volleyballScoreRight++;
+                    else volleyballScoreLeft++;
+                    updateVolleyballScoreDisplay();
+                    createFlashEffect(volleyball.position, 0xffd700, 3, 500);
+                    volleyballVel.set(0, 0, 0);
+                    volleyballResetTimer = 1.5;
+                    mpSend({ type: 'score', scoreLeft: volleyballScoreLeft, scoreRight: volleyballScoreRight });
+                }
+            }
+
+            volleyballBroadcastTimer -= delta;
+            if (volleyballBroadcastTimer <= 0 && mpMode) {
+                volleyballBroadcastTimer = 0.06;
+                mpSend({
+                    type: 'ball',
+                    x: volleyball.position.x, y: volleyball.position.y, z: volleyball.position.z,
+                    vx: volleyballVel.x, vy: volleyballVel.y, vz: volleyballVel.z
+                });
+            }
+        }
+
+        function volleyballTryHit() {
+            if (!volleyball || !maps[currentMap] || maps[currentMap].mode !== 'volleyball') return;
+            const dist = player.position.distanceTo(volleyball.position);
+            if (dist > 2.5) return;
+
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const impulse = { x: dir.x * 6 + player.velocity.x * 0.3, y: 7, z: dir.z * 6 + player.velocity.z * 0.3 };
+
+            if (!mpMode || mpMode === 'host') {
+                volleyballVel.set(impulse.x, impulse.y, impulse.z);
+                volleyballResetTimer = 0;
+            } else {
+                mpSend({ type: 'hit', impulse: impulse });
+            }
+            playBoostSound();
+        }
+
+        function toggleGhostMode() {
+            ghostModeEnabled = !ghostModeEnabled;
+            document.getElementById('ghost-toggle').classList.toggle('active', ghostModeEnabled);
+        }
+
+        function ghostStorageKey(levelName) {
+            return 'vertexRunGhost_' + levelName;
+        }
+
+        function ghostStartRecording() {
+            ghostRecording = [];
+            ghostRecordTimer = 0;
+        }
+
+        function ghostRecordSample(delta) {
+            if (maps[currentMap] && maps[currentMap].mode === 'volleyball') return;
+            ghostRecordTimer -= delta;
+            if (ghostRecordTimer > 0) return;
+            ghostRecordTimer = 0.15;
+            ghostRecording.push({
+                t: Math.round(gameTime * 100) / 100,
+                x: Math.round(player.position.x * 100) / 100,
+                y: Math.round(player.position.y * 100) / 100,
+                z: Math.round(player.position.z * 100) / 100,
+                rotY: Math.round((camera ? camera.rotation.y : 0) * 100) / 100
+            });
+        }
+
+        function ghostSaveIfRecord() {
+            if (ghostRecording.length > 1) {
+                try { localStorage.setItem(ghostStorageKey(currentMap), JSON.stringify(ghostRecording)); } catch (e) {}
+            }
+        }
+
+        function ghostLoadForLevel(levelName) {
+            ghostRemoveMesh();
+            ghostPlaybackData = null;
+            if (!ghostModeEnabled) return;
+            if (maps[levelName] && maps[levelName].mode === 'volleyball') return;
+            try {
+                const raw = localStorage.getItem(ghostStorageKey(levelName));
+                if (raw) ghostPlaybackData = JSON.parse(raw);
+            } catch (e) { ghostPlaybackData = null; }
+        }
+
+        function ghostRemoveMesh() {
+            if (ghostMesh && scene) scene.remove(ghostMesh);
+            ghostMesh = null;
+        }
+
+        function ghostUpdate() {
+            if (!ghostModeEnabled || !ghostPlaybackData || ghostPlaybackData.length < 2 || !scene) return;
+
+            if (!ghostMesh) {
+                ghostMesh = buildHumanoidModel(0xaaaaaa, 0.35);
+                scene.add(ghostMesh);
+            }
+
+            // Находим два соседних кадра записи вокруг текущего игрового времени и интерполируем между ними
+            const data = ghostPlaybackData;
+            if (gameTime > data[data.length - 1].t) {
+                ghostMesh.visible = false;
+                return;
+            }
+            ghostMesh.visible = true;
+
+            let i = 0;
+            while (i < data.length - 2 && data[i + 1].t < gameTime) i++;
+            const a = data[i], b = data[i + 1] || a;
+            const span = Math.max(b.t - a.t, 0.0001);
+            const frac = Math.max(0, Math.min(1, (gameTime - a.t) / span));
+
+            ghostMesh.position.set(
+                a.x + (b.x - a.x) * frac,
+                a.y + (b.y - a.y) * frac,
+                a.z + (b.z - a.z) * frac
+            );
+            ghostMesh.rotation.y = a.rotY + (b.rotY - a.rotY) * frac;
+        }
+
         // Уровни
         const levelList = ['sky_ascent', 'neon_core', 'void_park', 'crystal_peak', 'infinity_grid'];
         let currentLevelIndex = 0;
@@ -1104,6 +1650,19 @@
                 gravity: -30,
                 worldSize: 90,
                 decorationCount: 70
+            },
+            'volley_court': {
+                name: 'VOLLEYBALL',
+                display: '🏐 ВОЛЕЙБОЛ (тест)',
+                difficulty: 'Мини-игра 2-4 игрока',
+                mode: 'volleyball',
+                palette: [0xffd700, 0x00f0ff, 0xff8800, 0xffffff],
+                spawn: new THREE.Vector3(-9, 3, 0),
+                bgColor: 0x0a1a2a,
+                fogDensity: 0.002,
+                gravity: -18,
+                worldSize: 18,
+                decorationCount: 8
             }
         };
         
@@ -1684,9 +2243,29 @@
             const map = maps[mapName];
             if (!map) return;
             
+            // Убираем волейбольный мяч и табло, если уходим из режима волейбола
+            if (map.mode !== 'volleyball') {
+                if (volleyball) { scene.remove(volleyball); volleyball = null; }
+                document.getElementById('volleyball-score').classList.remove('active');
+            }
+            
             // Обновляем фон
             scene.fog = new THREE.FogExp2(map.bgColor || 0x000011, map.fogDensity || 0.008);
             scene.background = new THREE.Color(map.bgColor || 0x000011);
+            
+            if (map.mode === 'volleyball') {
+                createVolleyballCourt(map);
+                player.position.copy(map.spawn);
+                player.position.y += player.height;
+                player.velocity.set(0, 0, 0);
+                player.currentCheckpoint = 0;
+                player.targetCheckpoint = 0;
+                player.score = 0;
+                gameTime = 0;
+                nextTargetPosition = null;
+                updateHUD();
+                return;
+            }
             
             const palette = map.palette;
             const platformCount = map.platformCount || 30;
@@ -1796,6 +2375,11 @@
             
             // Декорации
             createDecorations(map);
+            
+            // Режим «Бездна» - пол внизу карты + путь наверх, если включён в настройках
+            if (abyssModeEnabled && map.mode !== 'volleyball') {
+                createAbyssFloorAndClimb(map);
+            }
             
             // Кольца
             for (let i = 0; i < 8; i++) {
@@ -2011,6 +2595,7 @@
         
         // --- ПОКАЗАТЬ ПРОХОЖДЕНИЕ ---
         function showLevelComplete() {
+            playLevelCompleteSound();
             const notification = document.getElementById('level-complete');
             const minutes = Math.floor(gameTime / 60);
             const seconds = Math.floor(gameTime % 60);
@@ -2021,22 +2606,21 @@
             updateBestTimeBadge();
 
             if (isNewRecord) {
+                ghostSaveIfRecord();
                 const flash = document.getElementById('new-record-flash');
                 flash.classList.add('show');
                 setTimeout(() => flash.classList.remove('show'), 2500);
             }
             
-            const celebrationLights = isMobileDevice || quality === 'low' ? 10 : 30;
-            for (let i = 0; i < celebrationLights; i++) {
+            const celebrationFlashes = isMobileDevice || quality === 'low' ? 10 : 30;
+            for (let i = 0; i < celebrationFlashes; i++) {
                 setTimeout(() => {
-                    const light = new THREE.PointLight(0xffd700, 2, 5);
-                    light.position.set(
+                    const pos = new THREE.Vector3(
                         player.position.x + (Math.random() - 0.5) * 15,
                         player.position.y + Math.random() * 8,
                         player.position.z + (Math.random() - 0.5) * 15
                     );
-                    scene.add(light);
-                    setTimeout(() => scene.remove(light), 500);
+                    createFlashEffect(pos, 0xffd700, 2, 500);
                 }, i * 100);
             }
             
@@ -2114,6 +2698,7 @@
                     player.jumpCount++;
                     player.onGround = false;
                     cameraShake = 0.3;
+                    playJumpSound();
                 }
             }
             
@@ -2151,6 +2736,7 @@
                 if (canTeleport) {
                     // Эффект телепортации
                     createTeleportEffect(player.position.clone());
+                    playTeleportSound();
                     
                     player.position.copy(newPos);
                     player.position.y += 1; // Немного поднимаем
@@ -2183,6 +2769,9 @@
                 player.dashCooldown -= delta;
             }
             
+            const wasOnGround = player.onGround;
+            const priorVelY = player.velocity.y;
+            
             player.position.x += player.velocity.x * delta;
             player.position.y += player.velocity.y * delta;
             player.position.z += player.velocity.z * delta;
@@ -2209,6 +2798,9 @@
                     }
                 }
             }
+            if (!wasOnGround && player.onGround && priorVelY < -3) {
+                playLandSound();
+            }
             
             // ДЖАМПЕРЫ (трамплины)
             for (const boost of boostObjects) {
@@ -2234,16 +2826,13 @@
                     player.jumpCount = 0;
                     player.score += 5;
                     cameraShake = 0.4;
+                    playBoostSound();
                     
                     // Эффект трамплина
-                    const glow = new THREE.PointLight(0x00f0ff, 3, 8);
-                    glow.position.copy(boost.position);
-                    scene.add(glow);
+                    createFlashEffect(boost.position, 0x00f0ff, 3, 600);
                     
                     // Взрыв частиц
                     createBoostEffect(boost.position.clone());
-                    
-                    setTimeout(() => scene.remove(glow), 600);
                 }
             }
             
@@ -2259,11 +2848,9 @@
                             player.score += 10;
                             showCheckpointNotification();
                             updateTarget();
+                            playCheckpointSound();
                             
-                            const glow = new THREE.PointLight(0x00f0ff, 3, 10);
-                            glow.position.copy(checkpoint.position);
-                            scene.add(glow);
-                            setTimeout(() => scene.remove(glow), 1000);
+                            createFlashEffect(checkpoint.position, 0x00f0ff, 4, 900);
                         }
                     }
                 }
@@ -2279,7 +2866,8 @@
                 player.velocity.z *= -0.5;
             }
             
-            if (player.position.y < -20) {
+            const fallThreshold = abyssModeEnabled ? -40 : -20;
+            if (player.position.y < fallThreshold) {
                 respawnPlayer();
             }
             
@@ -2292,6 +2880,14 @@
             updateSpeedTrail(delta);
             mpBroadcastPosition(delta);
             mpUpdateRemotePlayers(delta);
+            mpResolvePlayerCollisions();
+            ghostRecordSample(delta);
+            ghostUpdate();
+            if (volleyballHitQueued) {
+                volleyballHitQueued = false;
+                volleyballTryHit();
+            }
+            updateVolleyballPhysics(delta);
             
             // Частицы
             if (particleSystem) {
@@ -2416,6 +3012,43 @@
             scene.add(particles);
             
             setTimeout(() => scene.remove(particles), 500);
+        }
+
+        // --- ВСПЫШКА (без создания THREE.Light) ---
+        // Раньше "вспышки" при чекпоинте/буст-пэде/завершении уровня делались через
+        // добавление/удаление настоящего THREE.PointLight в сцену. Каждое такое добавление или
+        // удаление источника света заставляет WebGL перекомпилировать шейдеры ВСЕХ освещённых
+        // материалов в сцене (город, декорации, платформы) - именно это вызывало заметное
+        // подвисание при приземлении на новый чекпоинт. Обычный светящийся меш с аддитивным
+        // блендингом даёт похожий визуальный эффект вообще без этой цены.
+        function createFlashEffect(position, color, scaleMultiplier, durationMs) {
+            const geometry = new THREE.SphereGeometry(0.4, 10, 10);
+            const material = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.55,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const flash = new THREE.Mesh(geometry, material);
+            flash.position.copy(position);
+            scene.add(flash);
+
+            const start = Date.now();
+            const duration = durationMs || 700;
+            const maxScale = 1 + (scaleMultiplier || 3);
+            const interval = setInterval(() => {
+                const t = (Date.now() - start) / duration;
+                if (t >= 1) {
+                    clearInterval(interval);
+                    scene.remove(flash);
+                    flash.geometry.dispose();
+                    flash.material.dispose();
+                } else {
+                    flash.scale.setScalar(1 + t * maxScale);
+                    material.opacity = 0.55 * (1 - t);
+                }
+            }, 32);
         }
         
         // --- ОБНОВЛЕНИЕ УКАЗАТЕЛЯ ---
@@ -2549,19 +3182,21 @@
         
         // --- УПРАВЛЕНИЕ ---
         document.addEventListener('keydown', (e) => {
+            const activeTag = document.activeElement && document.activeElement.tagName;
+            const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+            if (isTyping) return; // не перехватываем ввод в текстовых полях (пробел в чате/нике и т.п.)
+
             // Прыжок и телепорт ставятся в очередь только по нажатию (не по удержанию клавиши) -
             // раньше удержание Space/Q мгновенно сжигало оба прыжка или спамило телепорт,
             // как только истекал кулдаун
             if (!keys[e.code]) {
                 if (e.code === 'Space') jumpQueued = true;
                 if (e.code === 'KeyQ') teleportQueued = true;
+                if (e.code === 'KeyF') volleyballHitQueued = true;
             }
             keys[e.code] = true;
             if (e.code === 'Space' || e.code === 'KeyQ') e.preventDefault();
             if (e.code === 'Escape') {
-                if (isPointerLocked) {
-                    document.exitPointerLock();
-                }
                 togglePause();
             }
         });
@@ -2585,7 +3220,7 @@
         }
         
         // --- ЗАПУСК ---
-        function startGame() {
+        function startGame(mpSeed) {
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('hud').classList.add('active');
             document.getElementById('crosshair').style.display = touchControlsEnabled ? 'none' : 'block';
@@ -2602,9 +3237,22 @@
             player.energy = 100;
             player.dashCooldown = 0;
             
-            createMap(currentMap);
+            if (mpSeed !== undefined && mpSeed !== null) {
+                // Мультиплеер: подменяем Math.random на детерминированный ГПСЧ только на время
+                // генерации карты, чтобы у всех игроков в комнате получились одинаковые платформы
+                Math.random = mulberry32(mpSeed);
+                try {
+                    createMap(currentMap);
+                } finally {
+                    Math.random = nativeMathRandom;
+                }
+            } else {
+                createMap(currentMap);
+            }
             updateHUD();
             updateBestTimeBadge();
+            ghostLoadForLevel(currentMap);
+            ghostStartRecording();
             
             if (autoLock && !touchControlsEnabled) {
                 setTimeout(() => {
@@ -2620,32 +3268,74 @@
         }
         
         // --- ПАУЗА ---
+        // Раньше Escape просто затемнял экран без какого-либо меню - вернуться в игру
+        // или открыть настройки было нечем, кроме перезагрузки страницы. Теперь показываем
+        // полноценное меню паузы, а вложенные панели (настройки/мультиплеер/чат) запоминают,
+        // нужно ли при закрытии вернуться в меню паузы или в главное меню.
+        let returnToPauseMenu = false;
+
         function togglePause() {
+            if (!document.getElementById('hud').classList.contains('active')) return; // не в игре
+
+            const openPanel = document.querySelector('#settings-menu.active, #multiplayer-menu.active, #global-chat-menu.active');
+            if (openPanel) {
+                if (openPanel.id === 'settings-menu') closeSettings();
+                else if (openPanel.id === 'multiplayer-menu') closeMultiplayer();
+                else if (openPanel.id === 'global-chat-menu') closeGlobalChat();
+                return;
+            }
+
+            if (gameRunning) pauseGame();
+            else resumeGame();
+        }
+
+        function pauseGame() {
             if (!gameRunning) return;
-            gameRunning = !gameRunning;
-            document.getElementById('hud').style.opacity = gameRunning ? '1' : '0.3';
-            document.getElementById('crosshair').style.opacity = gameRunning ? '0.8' : '0.3';
-            
-            if (gameRunning && autoLock && !touchControlsEnabled) {
+            gameRunning = false;
+            document.getElementById('hud').style.opacity = '0.3';
+            document.getElementById('crosshair').style.opacity = '0.3';
+            if (isPointerLocked) document.exitPointerLock();
+            document.getElementById('pause-menu').classList.add('active');
+        }
+
+        function resumeGame() {
+            document.getElementById('pause-menu').classList.remove('active');
+            document.getElementById('settings-menu').classList.remove('active');
+            document.getElementById('multiplayer-menu').classList.remove('active');
+            document.getElementById('global-chat-menu').classList.remove('active');
+            gameRunning = true;
+            document.getElementById('hud').style.opacity = '1';
+            document.getElementById('crosshair').style.opacity = '0.8';
+            if (autoLock && !touchControlsEnabled) {
                 document.getElementById('three-container').requestPointerLock();
-            } else if (!gameRunning && isPointerLocked) {
-                document.exitPointerLock();
             }
         }
+
+        function quitToMainMenu() {
+            gameRunning = false;
+            document.getElementById('pause-menu').classList.remove('active');
+            document.getElementById('settings-menu').classList.remove('active');
+            document.getElementById('multiplayer-menu').classList.remove('active');
+            document.getElementById('global-chat-menu').classList.remove('active');
+            document.getElementById('hud').classList.remove('active');
+            document.getElementById('touch-controls').classList.remove('active');
+            document.getElementById('crosshair').style.display = 'none';
+            document.getElementById('hands').classList.remove('active');
+            document.getElementById('main-menu').classList.remove('hidden');
+            if (isPointerLocked) document.exitPointerLock();
+            ghostRemoveMesh();
+        }
         
-        // --- НАСТРОЙКИ ---
+        // --- НАСТРОЙКИ / МУЛЬТИПЛЕЕР / ЧАТ (общая логика открытия-закрытия панелей) ---
         function showSettings() {
+            returnToPauseMenu = document.getElementById('pause-menu').classList.contains('active');
+            document.getElementById('pause-menu').classList.remove('active');
             document.getElementById('settings-menu').classList.add('active');
-            if (isPointerLocked) {
-                document.exitPointerLock();
-            }
         }
         
         function closeSettings() {
             document.getElementById('settings-menu').classList.remove('active');
-            if (gameRunning && autoLock && !touchControlsEnabled) {
-                document.getElementById('three-container').requestPointerLock();
-            }
+            if (returnToPauseMenu) document.getElementById('pause-menu').classList.add('active');
         }
         
         function setQuality(q, evt) {
@@ -2789,11 +3479,16 @@
         }
 
         // ============================================
-        // МУЛЬТИПЛЕЕР (ТЕСТ) - P2P через PeerJS
+        // МУЛЬТИПЛЕЕР (ТЕСТ) - P2P через PeerJS, комната на несколько человек
         // Работает без собственного сервера (использует бесплатный публичный
-        // брокер PeerJS только для первичного "знакомства" двух браузеров;
-        // дальше игроки соединены напрямую через WebRTC). Подходит для
-        // хостинга игры на GitHub Pages.
+        // брокер PeerJS только для первичного "знакомства" браузеров, дальше
+        // соединение идёт напрямую через WebRTC) - подходит для хостинга на
+        // GitHub Pages. Топология: "звезда" - первый, кто ввёл название
+        // комнаты, становится хостом и держит прямое соединение с каждым
+        // остальным игроком; хост пересылает (ретранслирует) сообщения между
+        // игроками, поэтому видеть друг друга может более двух человек.
+        // Карта у всех генерируется из общего seed (см. mulberry32 выше),
+        // поэтому платформы у всех совпадают.
         // ============================================
         function mpSetStatus(text, kind) {
             const el = document.getElementById('mp-status');
@@ -2802,205 +3497,629 @@
         }
 
         function showMultiplayer() {
+            returnToPauseMenu = document.getElementById('pause-menu').classList.contains('active');
+            document.getElementById('pause-menu').classList.remove('active');
             document.getElementById('multiplayer-menu').classList.add('active');
-            if (isPointerLocked) {
-                document.exitPointerLock();
-            }
+            if (isPointerLocked) document.exitPointerLock();
         }
 
         function closeMultiplayer() {
             document.getElementById('multiplayer-menu').classList.remove('active');
-            if (gameRunning && autoLock && !touchControlsEnabled) {
-                document.getElementById('three-container').requestPointerLock();
-            }
+            if (returnToPauseMenu) document.getElementById('pause-menu').classList.add('active');
         }
 
-        function mpStart() {
+        function mpSanitizeRoomName(name) {
+            return name.trim().toLowerCase().replace(/[^a-z0-9а-яё\-]/gi, '').replace(/\s+/g, '-').slice(0, 30) || 'default';
+        }
+
+        function mpJoinRoom() {
             if (typeof Peer === 'undefined') {
                 mpSetStatus('Не удалось загрузить библиотеку PeerJS (проверьте интернет-соединение).', 'err');
                 return;
             }
-            if (mpPeer) {
-                mpSetStatus('Уже активно. Ваш ID указан выше.', 'ok');
+            if (mpMode) {
+                mpSetStatus('Вы уже в комнате «' + mpRoomId + '».', 'ok');
                 return;
             }
-            mpSetStatus('Подключение к брокеру PeerJS...', '');
-            mpPeer = new Peer();
+            const rawName = document.getElementById('mp-room-input').value;
+            const roomName = mpSanitizeRoomName(rawName || 'default');
+            mpRoomId = roomName;
+            const fullPeerId = 'vr-room-' + roomName + '-v1';
 
-            mpPeer.on('open', (id) => {
-                document.getElementById('mp-my-id').textContent = id;
-                mpSetStatus('Готово! Поделитесь своим ID с другом.', 'ok');
+            mpSetStatus('Подключение к комнате «' + roomName + '»...', '');
+
+            const hostAttempt = new Peer(fullPeerId);
+            hostAttempt.on('open', () => {
+                // Название свободно - становимся хостом комнаты
+                mpPeer = hostAttempt;
+                mpMode = 'host';
+                mpOnRoomJoined();
+                mpPeer.on('connection', (conn) => mpRegisterIncomingConnection(conn));
             });
-
-            mpPeer.on('connection', (conn) => {
-                mpRegisterConnection(conn);
+            hostAttempt.on('error', (err) => {
+                if (err && err.type === 'unavailable-id') {
+                    // Комната уже занята - подключаемся как обычный клиент
+                    try { hostAttempt.destroy(); } catch(e) {}
+                    mpConnectAsClient(fullPeerId);
+                } else {
+                    mpSetStatus('Ошибка мультиплеера: ' + (err && err.type ? err.type : err), 'err');
+                }
             });
+        }
 
-            mpPeer.on('error', (err) => {
+        function mpConnectAsClient(fullPeerId) {
+            const clientPeer = new Peer();
+            clientPeer.on('open', () => {
+                mpPeer = clientPeer;
+                mpMode = 'client';
+                const conn = mpPeer.connect(fullPeerId, { reliable: false });
+                mpHostConn = conn;
+                conn.on('open', () => {
+                    mpOnRoomJoined();
+                    mpSend({ type: 'hello', name: mpPlayerName });
+                });
+                conn.on('data', (data) => mpOnData(data, conn));
+                conn.on('close', () => {
+                    mpAddChatLine(null, 'Хост отключился. Комната закрыта.', 'system');
+                    mpResetRoomState();
+                });
+                conn.on('error', () => {
+                    mpSetStatus('Не удалось подключиться к комнате «' + mpRoomId + '». Проверьте название.', 'err');
+                    mpResetRoomState();
+                });
+            });
+            clientPeer.on('error', (err) => {
                 mpSetStatus('Ошибка мультиплеера: ' + (err && err.type ? err.type : err), 'err');
             });
-
-            mpPeer.on('disconnected', () => {
-                mpSetStatus('Соединение с брокером потеряно.', 'err');
-            });
         }
 
-        function mpConnectToPeer() {
-            if (!mpPeer) mpStart();
-            const targetId = document.getElementById('mp-peer-input').value.trim();
-            if (!targetId) {
-                mpSetStatus('Введите ID друга.', 'err');
-                return;
-            }
-            const tryConnect = () => {
-                const conn = mpPeer.connect(targetId, { reliable: false });
-                mpRegisterConnection(conn);
-            };
-            if (mpPeer.open) tryConnect();
-            else mpPeer.on('open', tryConnect);
+        function mpOnRoomJoined() {
+            document.getElementById('mp-room-form').style.display = 'none';
+            document.getElementById('mp-room-active').style.display = 'block';
+            document.getElementById('mp-room-name-display').textContent = mpRoomId;
+            document.getElementById('mp-room-role-badge').textContent = mpMode === 'host' ? 'хост' : 'гость';
+            document.getElementById('mp-start-together-btn').style.display = mpMode === 'host' ? 'block' : 'none';
+            const collisionsToggle = document.getElementById('mp-collisions-toggle');
+            collisionsToggle.classList.toggle('active', mpCollisionsEnabled);
+            collisionsToggle.style.opacity = mpMode === 'host' ? '1' : '0.5';
+            collisionsToggle.style.cursor = mpMode === 'host' ? 'pointer' : 'default';
+            mpSetStatus('В комнате «' + mpRoomId + '» (' + (mpMode === 'host' ? 'вы хост' : 'вы гость') + ').', 'ok');
+            mpUpdatePlayerCount();
         }
 
-        function copyMyPeerId() {
-            const id = document.getElementById('mp-my-id').textContent;
-            if (!id || id === '—') return;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(id).catch(() => {});
-            }
-            mpSetStatus('ID скопирован в буфер обмена.', 'ok');
+        function mpToggleCollisions() {
+            if (mpMode !== 'host') return; // настройку меняет только хост, гости видят её как есть
+            mpCollisionsEnabled = !mpCollisionsEnabled;
+            document.getElementById('mp-collisions-toggle').classList.toggle('active', mpCollisionsEnabled);
+            mpSend({ type: 'collisions', enabled: mpCollisionsEnabled });
         }
 
-        function mpRegisterConnection(conn) {
+        function mpRegisterIncomingConnection(conn) {
             conn.on('open', () => {
-                mpConnections[conn.peer] = {
-                    conn: conn,
-                    mesh: null,
-                    label: null,
-                    targetPos: new THREE.Vector3(),
-                    lastUpdate: Date.now()
-                };
-                mpSetStatus('Игрок подключён: ' + conn.peer, 'ok');
+                mpHostConnections[conn.peer] = conn;
                 mpUpdatePlayerCount();
-                conn.send({ type: 'hello', name: mpPlayerName });
+                // Если игра уже идёт, сразу отправляем новому игроку текущий уровень и seed,
+                // чтобы он попал прямо в игру, а не завис в лобби комнаты
+                if (mpGameActive) {
+                    try {
+                        conn.send({
+                            type: 'start',
+                            from: mpPeer.id,
+                            level: currentMap,
+                            seed: mpCurrentSeed,
+                            collisions: mpCollisionsEnabled
+                        });
+                    } catch (e) {}
+                }
             });
-
-            conn.on('data', (data) => {
-                mpHandleData(conn.peer, data);
-            });
-
+            conn.on('data', (data) => mpOnData(data, conn));
             conn.on('close', () => {
-                mpRemovePlayer(conn.peer);
-                mpSetStatus('Игрок отключился: ' + conn.peer, '');
+                delete mpHostConnections[conn.peer];
+                mpRemoveRemotePlayer(conn.peer);
+                mpSend({ type: 'leave', from: conn.peer }, true);
                 mpUpdatePlayerCount();
             });
-
             conn.on('error', () => {
-                mpRemovePlayer(conn.peer);
+                delete mpHostConnections[conn.peer];
+                mpRemoveRemotePlayer(conn.peer);
                 mpUpdatePlayerCount();
             });
         }
 
-        function mpHandleData(peerId, data) {
-            if (!data || !data.type) return;
-            const entry = mpConnections[peerId];
-            if (!entry) return;
+        // Отправка данных всем в комнате. Хост шлёт напрямую каждому подключённому игроку;
+        // клиент шлёт единственному соединению - хосту (а тот сам разошлёт остальным).
+        function mpSend(data, skipFromStamp) {
+            if (!skipFromStamp) data.from = mpPeer ? mpPeer.id : null;
+            if (mpMode === 'host') {
+                for (const peerId in mpHostConnections) {
+                    const conn = mpHostConnections[peerId];
+                    if (conn.open) { try { conn.send(data); } catch (e) {} }
+                }
+            } else if (mpMode === 'client' && mpHostConn && mpHostConn.open) {
+                try { mpHostConn.send(data); } catch (e) {}
+            }
+        }
+
+        function mpOnData(data, viaConn) {
+            if (!data || !data.type || !data.from) return;
+            if (mpPeer && data.from === mpPeer.id) return;
 
             if (data.type === 'pos') {
-                entry.targetPos.set(data.x, data.y, data.z);
-                entry.rotY = data.rotY || 0;
-                entry.lastUpdate = Date.now();
-                if (!entry.mesh && scene) mpCreateRemoteMesh(peerId, data.name || 'Игрок');
+                mpUpdateRemotePlayerPos(data.from, data);
             } else if (data.type === 'hello') {
-                entry.remoteName = data.name;
-                if (entry.label) mpUpdateLabelText(entry, data.name);
+                mpUpdateRemotePlayerName(data.from, data.name);
+                mpAddChatLine(data.name || 'Игрок', 'присоединился(-ась) к комнате', 'system');
+            } else if (data.type === 'chat') {
+                mpAddChatLine(data.name || 'Игрок', data.text, 'remote');
+            } else if (data.type === 'leave') {
+                mpRemoveRemotePlayer(data.from);
+            } else if (data.type === 'collisions') {
+                mpCollisionsEnabled = !!data.enabled;
+                const toggle = document.getElementById('mp-collisions-toggle');
+                if (toggle) toggle.classList.toggle('active', mpCollisionsEnabled);
+            } else if (data.type === 'start') {
+                mpCollisionsEnabled = !!data.collisions;
+                currentMap = data.level;
+                currentLevelIndex = levelList.indexOf(data.level);
+                selectLevel(data.level);
+                closeMultiplayer();
+                startGame(data.seed);
+            } else if (data.type === 'ball') {
+                // Мяч в волейболе считает только хост - остальные просто принимают его положение
+                if (volleyball && mpMode !== 'host') {
+                    volleyball.position.set(data.x, data.y, data.z);
+                    volleyballVel.set(data.vx, data.vy, data.vz);
+                }
+            } else if (data.type === 'hit') {
+                // Удар от гостя применяется только на хосте (он один считает физику мяча)
+                if (mpMode === 'host' && volleyball && data.impulse) {
+                    volleyballVel.set(data.impulse.x, data.impulse.y, data.impulse.z);
+                    volleyballResetTimer = 0;
+                }
+            } else if (data.type === 'score') {
+                volleyballScoreLeft = data.scoreLeft;
+                volleyballScoreRight = data.scoreRight;
+                updateVolleyballScoreDisplay();
+            }
+
+            // Хост ретранслирует сообщение остальным подключённым (кроме отправителя)
+            if (mpMode === 'host') {
+                for (const peerId in mpHostConnections) {
+                    const conn = mpHostConnections[peerId];
+                    if (conn !== viaConn && conn.open) { try { conn.send(data); } catch (e) {} }
+                }
             }
         }
 
-        function mpCreateRemoteMesh(peerId, name) {
-            const entry = mpConnections[peerId];
-            if (!entry || !scene) return;
+        function mpStartTogether() {
+            if (mpMode !== 'host') return;
+            const seed = Math.floor(nativeMathRandom() * 1e9);
+            mpGameActive = true;
+            mpCurrentSeed = seed;
+            mpSend({ type: 'start', level: currentMap, seed: seed, collisions: mpCollisionsEnabled });
+            closeMultiplayer();
+            startGame(seed);
+        }
+
+        function mpSendRoomChat() {
+            const input = document.getElementById('mp-chat-input');
+            const text = input.value.trim();
+            if (!text || !mpMode) return;
+            input.value = '';
+            mpAddChatLine(mpPlayerName, text, 'self');
+            mpSend({ type: 'chat', name: mpPlayerName, text: text.slice(0, 200) });
+        }
+
+        function mpAddChatLine(name, text, kind) {
+            const log = document.getElementById('mp-chat-log');
+            const line = document.createElement('div');
+            line.className = 'chat-line' + (kind === 'self' ? ' chat-self' : kind === 'system' ? ' chat-system' : '');
+            if (kind === 'system') {
+                line.textContent = (name ? name + ' ' : '') + text;
+            } else {
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'chat-name';
+                nameSpan.textContent = (name || 'Игрок') + ':';
+                line.appendChild(nameSpan);
+                line.appendChild(document.createTextNode(text));
+            }
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function mpLeaveRoom() {
+            mpSend({ type: 'leave' });
+            mpResetRoomState();
+        }
+
+        function mpResetRoomState() {
+            for (const peerId in mpPlayers) mpRemoveRemotePlayer(peerId);
+            if (mpMode === 'host') {
+                for (const peerId in mpHostConnections) {
+                    try { mpHostConnections[peerId].close(); } catch (e) {}
+                }
+                mpHostConnections = {};
+            }
+            if (mpHostConn) { try { mpHostConn.close(); } catch (e) {} }
+            if (mpPeer) { try { mpPeer.destroy(); } catch (e) {} }
+            mpPeer = null;
+            mpMode = null;
+            mpHostConn = null;
+            mpRoomId = null;
+            mpGameActive = false;
+            mpCurrentSeed = null;
+            mpCollisionsEnabled = false;
+
+            document.getElementById('mp-room-form').style.display = 'block';
+            document.getElementById('mp-room-active').style.display = 'none';
+            document.getElementById('mp-chat-log').innerHTML = '';
+            document.getElementById('mp-room-input').value = '';
+            const collisionsToggle = document.getElementById('mp-collisions-toggle');
+            collisionsToggle.classList.remove('active');
+            collisionsToggle.style.opacity = '1';
+            collisionsToggle.style.cursor = 'pointer';
+            mpSetStatus('Не подключено', '');
+            mpUpdatePlayerCount();
+        }
+
+        function mpUpdateRemotePlayerPos(peerId, data) {
+            let entry = mpPlayers[peerId];
+            if (!entry) {
+                entry = mpPlayers[peerId] = {
+                    mesh: null, label: null,
+                    targetPos: new THREE.Vector3(data.x, data.y, data.z),
+                    rotY: data.rotY || 0,
+                    name: data.name || 'Игрок'
+                };
+                if (scene) {
+                    try { mpCreateRemoteMesh(peerId); }
+                    catch (e) { console.error('VERTEX RUN: не удалось создать модель игрока', e); }
+                }
+            } else {
+                entry.targetPos.set(data.x, data.y, data.z);
+                entry.rotY = data.rotY || 0;
+                if (data.name && data.name !== entry.name) {
+                    entry.name = data.name;
+                    if (entry.label) mpUpdateLabelText(entry);
+                }
+            }
+        }
+
+        function mpUpdateRemotePlayerName(peerId, name) {
+            if (!name) return;
+            let entry = mpPlayers[peerId];
+            if (!entry) {
+                entry = mpPlayers[peerId] = { mesh: null, label: null, targetPos: new THREE.Vector3(), rotY: 0, name: name };
+            } else {
+                entry.name = name;
+                if (entry.label) mpUpdateLabelText(entry);
+            }
+        }
+
+        function mpColorForPeer(peerId) {
+            let hash = 0;
+            for (let i = 0; i < peerId.length; i++) hash = (hash * 31 + peerId.charCodeAt(i)) >>> 0;
+            return MP_PLAYER_COLORS[hash % MP_PLAYER_COLORS.length];
+        }
+
+        // --- МОДЕЛЬ УДАЛЁННОГО ИГРОКА (стилизованный низкополигональный человечек) ---
+        // Общая низкополигональная модель человечка - используется и для игроков в мультиплеере,
+        // и для полупрозрачного "призрака" лучшего забега (opacity < 1)
+        function buildHumanoidModel(color, opacity) {
+            const op = opacity === undefined ? 1 : opacity;
+            const transparent = op < 1;
+            const bodyMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.35, roughness: 0.4, metalness: 0.6, transparent: transparent, opacity: op });
+            const visorMat = new THREE.MeshStandardMaterial({ color: 0x0a0a1a, emissive: color, emissiveIntensity: 0.6, roughness: 0.2, metalness: 0.8, transparent: transparent, opacity: op });
 
             const group = new THREE.Group();
-            const bodyGeometry = (typeof THREE.CapsuleGeometry === 'function')
-                ? new THREE.CapsuleGeometry(0.4, 1, 4, 8)
-                : new THREE.CylinderGeometry(0.4, 0.4, 1.7, 8);
-            const body = new THREE.Mesh(
-                bodyGeometry,
-                new THREE.MeshStandardMaterial({ color: 0xff00e4, emissive: 0xff00e4, emissiveIntensity: 0.4 })
+
+            // Торс (слегка сужен книзу - выглядит менее "коробкообразно")
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.75, 8), bodyMat);
+            torso.position.y = 1.05;
+            group.add(torso);
+
+            // Голова - гранёная (низкополигональный икосаэдр вместо простого шара)
+            const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 0), bodyMat);
+            head.position.y = 1.62;
+            group.add(head);
+
+            // "Визор" - светящаяся полоска на лице, придаёт индивидуальности силуэту
+            const visor = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.06), visorMat);
+            visor.position.set(0, 1.64, 0.2);
+            group.add(visor);
+
+            // Плечи/руки
+            const armGeo = (typeof THREE.CapsuleGeometry === 'function')
+                ? new THREE.CapsuleGeometry(0.08, 0.5, 4, 6)
+                : new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6);
+            const armL = new THREE.Mesh(armGeo, bodyMat);
+            armL.position.set(-0.36, 1.05, 0);
+            armL.rotation.z = 0.15;
+            group.add(armL);
+            const armR = armL.clone();
+            armR.position.x = 0.36;
+            armR.rotation.z = -0.15;
+            group.add(armR);
+
+            // Ноги
+            const legGeo = new THREE.CylinderGeometry(0.11, 0.09, 0.7, 6);
+            const legL = new THREE.Mesh(legGeo, bodyMat);
+            legL.position.set(-0.13, 0.35, 0);
+            group.add(legL);
+            const legR = legL.clone();
+            legR.position.x = 0.13;
+            group.add(legR);
+
+            // Кольцо-подсветка под ногами (в тон игроку) - как у платформ/чекпоинтов в игре
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(0.3, 0.42, 16),
+                new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4 * op, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
             );
-            group.add(body);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.02;
+            group.add(ring);
+
+            group.userData.legL = legL;
+            group.userData.legR = legR;
+            group.userData.armL = armL;
+            group.userData.armR = armR;
+            group.userData.walkPhase = Math.random() * Math.PI * 2;
+
+            return group;
+        }
+
+        function mpCreateRemoteMesh(peerId) {
+            const entry = mpPlayers[peerId];
+            if (!entry || !scene) return;
+
+            const color = mpColorForPeer(peerId);
+            const group = buildHumanoidModel(color, 1);
+            group.position.copy(entry.targetPos);
             scene.add(group);
 
             entry.mesh = group;
-            entry.remoteName = name;
-            mpCreateOrUpdateLabel(entry, name);
+            entry.color = color;
+            mpCreateOrUpdateLabel(entry);
         }
 
-        function mpCreateOrUpdateLabel(entry, name) {
+        function mpCreateOrUpdateLabel(entry) {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 64;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = 'rgba(0,0,0,0.4)';
             ctx.fillRect(0, 0, 256, 64);
-            ctx.fillStyle = '#ff00e4';
+            ctx.fillStyle = '#' + (entry.color || 0x00f0ff).toString(16).padStart(6, '0');
             ctx.font = 'bold 28px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(name || 'Игрок', 128, 42);
+            ctx.fillText(entry.name || 'Игрок', 128, 42);
             const texture = new THREE.CanvasTexture(canvas);
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-            sprite.scale.set(2, 0.5, 1);
-            sprite.position.set(0, 1.6, 0);
+            sprite.scale.set(1.8, 0.45, 1);
+            sprite.position.set(0, 2.1, 0);
             if (entry.label) entry.mesh.remove(entry.label);
             entry.mesh.add(sprite);
             entry.label = sprite;
         }
 
-        function mpUpdateLabelText(entry, name) {
-            if (entry.mesh) mpCreateOrUpdateLabel(entry, name);
+        function mpUpdateLabelText(entry) {
+            if (entry.mesh) mpCreateOrUpdateLabel(entry);
         }
 
-        function mpRemovePlayer(peerId) {
-            const entry = mpConnections[peerId];
+        function mpRemoveRemotePlayer(peerId) {
+            const entry = mpPlayers[peerId];
             if (entry && entry.mesh && scene) scene.remove(entry.mesh);
-            delete mpConnections[peerId];
+            delete mpPlayers[peerId];
         }
 
         function mpUpdatePlayerCount() {
-            const count = Object.keys(mpConnections).length + 1;
-            document.getElementById('mp-players-count').textContent = count;
+            const count = Object.keys(mpPlayers).length + (mpMode ? 1 : 0);
+            document.getElementById('mp-players-count').textContent = Math.max(count, 1);
             document.getElementById('mp-players-tag').classList.toggle('active', count > 1);
         }
 
         function mpBroadcastPosition(delta) {
-            const activeConns = Object.values(mpConnections);
-            if (activeConns.length === 0) return;
+            if (!mpMode) return;
             mpBroadcastTimer -= delta;
             if (mpBroadcastTimer > 0) return;
             mpBroadcastTimer = 0.08; // ~12 обновлений в секунду
-
-            const payload = {
+            mpSend({
                 type: 'pos',
                 x: player.position.x, y: player.position.y, z: player.position.z,
                 rotY: camera ? camera.rotation.y : 0,
                 name: mpPlayerName
-            };
-            for (const entry of activeConns) {
-                if (entry.conn && entry.conn.open) {
-                    try { entry.conn.send(payload); } catch (e) {}
-                }
-            }
+            });
         }
 
         function mpUpdateRemotePlayers(delta) {
-            for (const peerId in mpConnections) {
-                const entry = mpConnections[peerId];
+            for (const peerId in mpPlayers) {
+                const entry = mpPlayers[peerId];
                 if (!entry.mesh) continue;
+                const prevPos = entry.mesh.position.clone();
                 entry.mesh.position.lerp(entry.targetPos, Math.min(delta * 10, 1));
                 if (entry.rotY !== undefined) {
                     entry.mesh.rotation.y += (entry.rotY - entry.mesh.rotation.y) * Math.min(delta * 10, 1);
                 }
+                // Простая анимация ходьбы/покачивания конечностей на основе скорости перемещения меша
+                const moved = entry.mesh.position.distanceTo(prevPos);
+                const ud = entry.mesh.userData;
+                if (ud.legL) {
+                    ud.walkPhase += delta * (moved > 0.01 ? 10 : 2);
+                    const swing = moved > 0.01 ? Math.sin(ud.walkPhase) * 0.5 : Math.sin(ud.walkPhase) * 0.05;
+                    ud.legL.rotation.x = swing;
+                    ud.legR.rotation.x = -swing;
+                    ud.armL.rotation.x = -swing * 0.6;
+                    ud.armR.rotation.x = swing * 0.6;
+                }
             }
         }
-        
+
+        // «Плотность игроков» - если включена хостом, не даём локальному игроку проходить
+        // сквозь остальных. Каждый клиент решает это только для СЕБЯ (толкает свою позицию
+        // при пересечении с чужим мешем) - простое, но достаточно надёжное решение для
+        // P2P-мультиплеера без общего физического сервера.
+        function mpResolvePlayerCollisions() {
+            if (!mpCollisionsEnabled || !mpMode) return;
+            const minDist = 0.9;
+            for (const peerId in mpPlayers) {
+                const entry = mpPlayers[peerId];
+                if (!entry.mesh) continue;
+                const dy = player.position.y - entry.mesh.position.y;
+                if (Math.abs(dy) > 1.8) continue; // сильно разная высота - не считаем столкновением
+                const dx = player.position.x - entry.mesh.position.x;
+                const dz = player.position.z - entry.mesh.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist > 0.0001 && dist < minDist) {
+                    const push = (minDist - dist);
+                    player.position.x += (dx / dist) * push;
+                    player.position.z += (dz / dist) * push;
+                    // Гасим скорость в сторону столкновения, чтобы не "дрожать" на месте
+                    const velAlong = player.velocity.x * (dx / dist) + player.velocity.z * (dz / dist);
+                    if (velAlong < 0) {
+                        player.velocity.x -= (dx / dist) * velAlong;
+                        player.velocity.z -= (dz / dist) * velAlong;
+                    }
+                }
+            }
+        }
+
+        // ============================================
+        // ОБЩИЙ ЧАТ (ТЕСТ) - тоже P2P, отдельная "комната" с фиксированным
+        // названием. Первый посетитель, кто откроет игру, становится
+        // временным хостом-ретранслятором для всех остальных; если он
+        // закроет вкладку, следующий подключившийся автоматически станет
+        // новым хостом. Полноценный постоянный сервер для этого не нужен.
+        // ============================================
+        function lobbyConnect() {
+            if (typeof Peer === 'undefined' || lobbyPeer) return;
+            lobbySetStatus('Подключение к общему чату...', '');
+
+            const hostAttempt = new Peer(LOBBY_ROOM_ID);
+            hostAttempt.on('open', () => {
+                lobbyPeer = hostAttempt;
+                lobbyMode = 'host';
+                lobbySetStatus('Вы временно ведущий узел общего чата.', 'ok');
+                lobbyPeer.on('connection', (conn) => {
+                    conn.on('open', () => { lobbyHostConnections[conn.peer] = conn; });
+                    conn.on('data', (data) => lobbyOnData(data, conn));
+                    conn.on('close', () => { delete lobbyHostConnections[conn.peer]; });
+                });
+            });
+            hostAttempt.on('error', (err) => {
+                if (err && err.type === 'unavailable-id') {
+                    try { hostAttempt.destroy(); } catch (e) {}
+                    lobbyConnectAsClient();
+                } else {
+                    lobbySetStatus('Общий чат недоступен.', 'err');
+                    lobbyScheduleReconnect();
+                }
+            });
+        }
+
+        function lobbyConnectAsClient() {
+            const clientPeer = new Peer();
+            clientPeer.on('open', () => {
+                lobbyPeer = clientPeer;
+                lobbyMode = 'client';
+                const conn = lobbyPeer.connect(LOBBY_ROOM_ID, { reliable: false });
+                lobbyHostConn = conn;
+                conn.on('open', () => lobbySetStatus('Подключено к общему чату.', 'ok'));
+                conn.on('data', (data) => lobbyOnData(data, conn));
+                conn.on('close', () => {
+                    lobbySetStatus('Соединение потеряно, переподключаемся...', 'err');
+                    lobbyTeardown();
+                    lobbyScheduleReconnect();
+                });
+                conn.on('error', () => {
+                    lobbyTeardown();
+                    lobbyScheduleReconnect();
+                });
+            });
+            clientPeer.on('error', () => {
+                lobbySetStatus('Общий чат недоступен.', 'err');
+                lobbyScheduleReconnect();
+            });
+        }
+
+        function lobbyScheduleReconnect() {
+            if (lobbyReconnectTimer) return;
+            lobbyReconnectTimer = setTimeout(() => {
+                lobbyReconnectTimer = null;
+                lobbyConnect();
+            }, 5000);
+        }
+
+        function lobbyTeardown() {
+            if (lobbyPeer) { try { lobbyPeer.destroy(); } catch (e) {} }
+            lobbyPeer = null;
+            lobbyMode = null;
+            lobbyHostConn = null;
+            lobbyHostConnections = {};
+        }
+
+        function lobbyOnData(data, viaConn) {
+            if (!data || data.type !== 'chat') return;
+            lobbyAddMessage(data.name || 'Игрок', data.text, false);
+            if (lobbyMode === 'host') {
+                for (const id in lobbyHostConnections) {
+                    const c = lobbyHostConnections[id];
+                    if (c !== viaConn && c.open) { try { c.send(data); } catch (e) {} }
+                }
+            }
+        }
+
+        function lobbySetStatus(text, kind) {
+            const el = document.getElementById('lobby-status');
+            if (!el) return;
+            el.textContent = text;
+            el.className = kind || '';
+        }
+
+        function lobbySendChatFromInput() {
+            const input = document.getElementById('lobby-chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            const data = { type: 'chat', name: mpPlayerName, text: text.slice(0, 200) };
+            lobbyAddMessage(mpPlayerName, data.text, true);
+            if (lobbyMode === 'host') {
+                for (const id in lobbyHostConnections) {
+                    const c = lobbyHostConnections[id];
+                    if (c.open) { try { c.send(data); } catch (e) {} }
+                }
+            } else if (lobbyMode === 'client' && lobbyHostConn && lobbyHostConn.open) {
+                try { lobbyHostConn.send(data); } catch (e) {}
+            } else {
+                lobbySetStatus('Нет соединения - сообщение не отправлено.', 'err');
+            }
+        }
+
+        function lobbyAddMessage(name, text, isSelf) {
+            const log = document.getElementById('lobby-chat-log');
+            if (!log) return;
+            const line = document.createElement('div');
+            line.className = 'chat-line' + (isSelf ? ' chat-self' : '');
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'chat-name';
+            nameSpan.textContent = (name || 'Игрок') + ':';
+            line.appendChild(nameSpan);
+            line.appendChild(document.createTextNode(text));
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function showGlobalChat() {
+            returnToPauseMenu = document.getElementById('pause-menu').classList.contains('active');
+            document.getElementById('pause-menu').classList.remove('active');
+            document.getElementById('global-chat-menu').classList.add('active');
+            if (isPointerLocked) document.exitPointerLock();
+            if (!lobbyPeer) lobbyConnect();
+        }
+
+        function closeGlobalChat() {
+            document.getElementById('global-chat-menu').classList.remove('active');
+            if (returnToPauseMenu) document.getElementById('pause-menu').classList.add('active');
+        }
+
         // --- ЗАГРУЗКА ---
         window.onload = function() {
             setTimeout(() => {
